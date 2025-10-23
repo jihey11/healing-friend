@@ -145,24 +145,11 @@ class ChatBot {
     return array[Math.floor(Math.random() * array.length)];
   }
 
-  // GPT 응답 (Firebase Functions 사용)
+  // GPT 응답 (백엔드 API 사용)
   async getGPTResponse(userMessage, context = {}) {
     try {
-      // Firebase Functions 호출 가능 여부 확인
-      if (!window.firebase || !window.firebase.functions) {
-        console.warn('Firebase Functions를 사용할 수 없습니다. 로컬 응답으로 대체합니다.');
-        return null;
-      }
-
-      // Firebase 인증 확인
-      const currentUser = window.firebase.auth().currentUser;
-      if (!currentUser) {
-        console.warn('사용자 인증이 필요합니다.');
-        return null;
-      }
-
-      // Firebase Functions 호출
-      const chatFunction = window.firebase.functions().httpsCallable('chat');
+      // 백엔드 API URL 가져오기
+      const API_URL = window.ENV?.API_URL || 'http://localhost:3000';
       
       // 메시지 준비
       const messages = [
@@ -170,17 +157,30 @@ class ChatBot {
         { role: 'user', content: userMessage }
       ];
 
-      const result = await chatFunction({
-        messages: messages,
-        characterLevel: this.characterData?.level || 1,
-        characterStage: this.characterData?.evolutionStage || 0
+      // 백엔드 API 호출
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: messages,
+          characterLevel: this.characterData?.level || 1,
+          characterStage: this.characterData?.evolutionStage || 0
+        })
       });
 
-      if (!result.data || !result.data.success) {
-        throw new Error('함수 호출 실패');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.message) {
+        throw new Error('API 응답 형식이 올바르지 않습니다.');
       }
       
-      const reply = result.data.message.trim();
+      const reply = data.message.trim();
       
       if (!reply) {
         throw new Error('빈 응답을 받았습니다.');

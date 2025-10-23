@@ -1,0 +1,48 @@
+[build]
+  # 빌드 명령어 (정적 사이트이므로 빌드 불필요)
+  command = "echo 'No build required'"
+  
+  # 배포할 디렉토리
+  publish = "public"
+
+[[redirects]]
+  # SPA 라우팅 지원 (모든 경로를 index.html로)
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  # Node.js 버전 지정
+  NODE_VERSION = "18"
+
+# 헤더 설정
+[[headers]]
+  # 모든 페이지에 적용
+  for = "/*"
+  [headers.values]
+    # 보안 헤더
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # CORS 헤더 (백엔드 API 호출용)
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
+
+# 정적 파일 캐싱
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, immutable"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+

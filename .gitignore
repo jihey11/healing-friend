@@ -49,10 +49,18 @@ coverage/
 *.temp
 .cache/
 
-# Firebase
+# Firebase (사용 시)
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+
+# Railway
+.railway/
+
+# Netlify
+.netlify/
+
+# 디버그 로그
 *-debug.log
 
 # 백업 파일

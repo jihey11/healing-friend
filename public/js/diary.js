@@ -76,37 +76,37 @@ class DiaryManager {
   }
 
   /**
-   * GPT-4 API를 사용한 감정 분석 (Firebase Functions 사용)
+   * GPT-4 API를 사용한 감정 분석 (백엔드 API 사용)
    * @param {string} text - 분석할 텍스트
    * @returns {Object|null} 감정별 점수 또는 null
    */
   async analyzeByGPT(text) {
     try {
-      // Firebase Functions 호출 가능 여부 확인
-      if (!window.firebase || !window.firebase.functions) {
-        console.warn('Firebase Functions를 사용할 수 없습니다. 키워드 분석으로 대체합니다.');
-        return null;
-      }
+      // 백엔드 API URL 가져오기
+      const API_URL = window.ENV?.API_URL || 'http://localhost:3000';
 
-      // Firebase 인증 확인
-      const currentUser = window.firebase.auth().currentUser;
-      if (!currentUser) {
-        console.warn('사용자 인증이 필요합니다.');
-        return null;
-      }
-
-      // Firebase Functions 호출
-      const analyzeFunction = window.firebase.functions().httpsCallable('analyzeDiaryEmotion');
-      
-      const result = await analyzeFunction({
-        diaryText: text
+      // 백엔드 API 호출
+      const response = await fetch(`${API_URL}/api/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          diaryText: text
+        })
       });
 
-      if (!result.data || !result.data.success) {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.emotions) {
         throw new Error('감정 분석 실패');
       }
       
-      const scores = result.data.emotions;
+      const scores = data.emotions;
       
       // 0-5 범위로 변환 (백엔드에서는 0-100으로 반환)
       const convertedScores = {};

@@ -1,12 +1,15 @@
+# 환경 변수
+.env
+.env.local
+.env.production
+
 # Node.js
 node_modules/
 npm-debug.log
 yarn-error.log
 
-# 환경 변수
-.env
-.env.local
-.runtimeconfig.json
+# 로그
+*.log
 
 # IDE
 .vscode/

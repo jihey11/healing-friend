@@ -49,52 +49,52 @@
 
 ### 아키텍처
 
-이 프로젝트는 **백엔드/프론트엔드 분리 구조**로 설계되었습니다:
-- **프론트엔드**: Firebase Hosting에 배포
-- **백엔드**: Firebase Functions (서버리스)
+이 프로젝트는 **백엔드/프론트엔드 완전 분리 구조**로 설계되었습니다:
+- **프론트엔드**: Netlify (정적 호스팅)
+- **백엔드**: Railway (Express.js 서버)
 - **보안**: OpenAI API 키는 백엔드에서만 관리
 
-### 빠른 시작 (로컬 개발)
+### 로컬 개발 환경 설정
 
-1. **저장소 클론**
+#### 1. 저장소 클론
 ```bash
 git clone https://github.com/jihey11/healing-friend.git
 cd healing-friend
 ```
 
-2. **의존성 설치**
+#### 2. 백엔드 서버 실행
 ```bash
-cd functions
+cd backend
 npm install
+cp .env.example .env
+# .env 파일에서 OPENAI_API_KEY 설정
+npm run dev
 ```
 
-3. **Firebase 로그인**
+백엔드 서버가 `http://localhost:3000`에서 실행됩니다.
+
+#### 3. 프론트엔드 실행
 ```bash
-firebase login
+# 새 터미널에서
+cd public
+
+# 간단한 HTTP 서버 실행
+python -m http.server 8000
+# 또는
+npx http-server -p 8000
 ```
 
-4. **로컬 에뮬레이터 실행**
-```bash
-firebase emulators:start
-```
-
-5. 브라우저에서 `http://localhost:5000` 접속
+브라우저에서 `http://localhost:8000` 접속
 
 ### 프로덕션 배포
 
-전체 배포 가이드는 **[DEPLOYMENT.md](./DEPLOYMENT.md)** 파일을 참고하세요.
+전체 배포 가이드는 **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** 파일을 참고하세요.
 
-**요약**:
-```bash
-# Firebase 초기화
-firebase init
-
-# OpenAI API 키 설정
-firebase functions:secrets:set OPENAI_API_KEY
-
-# 배포
-firebase deploy
-```
+**배포 순서**:
+1. **Railway에 백엔드 배포** (먼저!)
+2. **Netlify에 프론트엔드 배포**
+3. **환경 변수 설정**
+4. **테스트**
 
 ## 🛠️ 기술 스택
 
@@ -103,72 +103,84 @@ firebase deploy
 - **UI**: HTML5, CSS3
 - **Canvas API**: 캐릭터 렌더링 및 게임
 - **Module System**: ES6 Modules
+- **Hosting**: Netlify
 
 ### 백엔드
-- **Platform**: Firebase Functions (Node.js 18)
+- **Framework**: Express.js (Node.js 18+)
 - **AI**: OpenAI GPT-4o-mini API
+- **Security**: Helmet, CORS, Rate Limiting
+- **Hosting**: Railway
+
+### 인증 & 데이터베이스
 - **Authentication**: Firebase Auth
 - **Database**: Firebase Firestore
-- **Hosting**: Firebase Hosting
-- **Storage**: Firebase Cloud Storage (선택)
 
 ## 📁 프로젝트 구조
 
 ```
 healing-friend/
-├── public/                 # 프론트엔드 (Firebase Hosting)
-│   ├── index.html         # 메인 HTML
-│   ├── css/               # 스타일시트
+├── public/                  # 프론트엔드 (Netlify)
+│   ├── index.html          # 메인 HTML
+│   ├── css/                # 스타일시트
 │   │   ├── reset.css
 │   │   ├── variables.css
 │   │   ├── style.css
 │   │   ├── auth.css
 │   │   ├── character.css
 │   │   └── game.css
-│   ├── js/                # JavaScript 모듈
-│   │   ├── app.js         # 메인 앱
-│   │   ├── auth.js        # 인증
-│   │   ├── character.js   # 캐릭터 시스템
-│   │   ├── chat.js        # AI 대화 (Functions 호출)
-│   │   ├── diary.js       # 일기 (Functions 호출)
-│   │   ├── food.js        # 음식 시스템
-│   │   ├── game-target.js # 과녁 게임
-│   │   ├── game-puzzle.js # 퍼즐 게임
-│   │   ├── config.js      # 설정
-│   │   └── utils.js       # 유틸리티
-│   └── assets/            # 이미지 및 리소스
-├── functions/             # 백엔드 (Firebase Functions)
-│   ├── index.js          # Functions 코드
-│   │   ├── chat()        # AI 채팅 함수
-│   │   └── analyzeDiaryEmotion() # 감정 분석 함수
-│   ├── package.json      # 의존성
-│   └── .gitignore        # Git 무시 파일
-├── firebase.json         # Firebase 설정
-├── .firebaserc           # Firebase 프로젝트 설정
-├── .gitignore            # Git 무시 파일
-├── README.md             # 프로젝트 설명
-└── DEPLOYMENT.md         # 배포 가이드
+│   ├── js/                 # JavaScript 모듈
+│   │   ├── app.js          # 메인 앱
+│   │   ├── auth.js         # 인증
+│   │   ├── character.js    # 캐릭터 시스템
+│   │   ├── chat.js         # AI 대화 (백엔드 API 호출)
+│   │   ├── diary.js        # 일기 (백엔드 API 호출)
+│   │   ├── food.js         # 음식 시스템
+│   │   ├── game-target.js  # 과녁 게임
+│   │   ├── game-puzzle.js  # 퍼즐 게임
+│   │   ├── config.js       # 설정
+│   │   └── utils.js        # 유틸리티
+│   ├── assets/             # 이미지 및 리소스
+│   └── _redirects          # Netlify 리다이렉트 설정
+├── backend/                # 백엔드 (Railway)
+│   ├── server.js           # Express.js 서버
+│   │   ├── POST /api/chat    # AI 채팅 API
+│   │   └── POST /api/analyze # 감정 분석 API
+│   ├── package.json        # 의존성
+│   ├── .env.example        # 환경 변수 예시
+│   ├── .gitignore          # Git 무시 파일
+│   ├── railway.json        # Railway 설정
+│   └── README.md           # 백엔드 문서
+├── netlify.toml            # Netlify 설정
+├── .gitignore              # Git 무시 파일
+├── README.md               # 프로젝트 설명
+└── DEPLOYMENT_GUIDE.md     # 배포 가이드
 ```
 
 ## 🔐 보안
 
 ### API 키 관리
 
-✅ **안전**: OpenAI API 키는 **Firebase Functions**에서만 사용
-- 클라이언트 코드에 노출되지 않음
-- Firebase Secrets로 안전하게 관리
-- 환경 변수로 주입
+✅ **안전**: OpenAI API 키는 **Railway 백엔드 서버**에서만 사용
+- 클라이언트 코드에 절대 노출되지 않음
+- Railway 환경 변수로 안전하게 관리
+- Express.js 서버에서만 API 호출
 
 ❌ **위험**: 프론트엔드에 API 키 하드코딩 (절대 금지!)
 
-### Firebase 보안 규칙
+### 보안 기능
 
-Firestore와 Storage에 적절한 보안 규칙 설정 필요:
+- **Helmet**: 보안 헤더 자동 설정
+- **CORS**: 허용된 도메인만 접근 가능
+- **Rate Limiting**: DDoS 공격 방지 (15분당 100 요청)
+- **Input Validation**: 모든 요청 데이터 검증
+
+### Firebase 보안
+
+Firestore와 Storage에 적절한 보안 규칙 설정:
 - 사용자 인증 확인
 - 본인 데이터만 읽기/쓰기 허용
-- 악의적인 요청 차단
 
-자세한 내용은 [DEPLOYMENT.md](./DEPLOYMENT.md)의 "보안 규칙 설정" 섹션 참고
+자세한 내용은 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) 참고
 
 ## 📝 라이선스
 

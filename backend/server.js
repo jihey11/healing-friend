@@ -1,90 +1,128 @@
-/**
- * Healing Friend - Backend Functions
- * OpenAI API 호출을 안전하게 처리하는 서버리스 함수들
- */
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import OpenAI from 'openai';
 
-const {onCall, HttpsError} = require('firebase-functions/v2/https');
-const {setGlobalOptions} = require('firebase-functions/v2');
-const admin = require('firebase-admin');
+// 환경 변수 로드
+dotenv.config();
 
-// Firebase Admin 초기화
-admin.initializeApp();
-
-// 전역 옵션 설정 (서울 리전)
-setGlobalOptions({
-  region: 'asia-northeast3', // 서울
-  maxInstances: 10
-});
+// Express 앱 초기화
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // OpenAI 클라이언트 초기화
-const OpenAI = require('openai');
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// 미들웨어 설정
+app.use(helmet()); // 보안 헤더
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+
+// Rate Limiting (DDoS 방지)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 100, // 최대 100 요청
+  message: '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.'
+});
+app.use('/api/', limiter);
+
+// 헬스 체크
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Healing Friend API Server',
+    version: '1.0.0'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ==================== API 엔드포인트 ====================
+
 /**
- * 채팅 함수 - AI와 대화
+ * POST /api/chat
+ * AI 채팅 API
  */
-exports.chat = onCall(async (request) => {
-  // 인증 확인
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-  }
-
-  const {messages, characterLevel, characterStage} = request.data;
-
-  // 입력 검증
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    throw new HttpsError('invalid-argument', '메시지가 필요합니다.');
-  }
-
+app.post('/api/chat', async (req, res) => {
   try {
-    // 캐릭터 레벨에 따른 시스템 프롬프트 조정
-    const systemPrompt = getSystemPrompt(characterLevel, characterStage);
+    const { messages, characterLevel, characterStage } = req.body;
 
+    // 입력 검증
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: '메시지가 필요합니다.'
+      });
+    }
+
+    // 시스템 프롬프트 생성
+    const systemPrompt = getSystemPrompt(characterLevel || 1, characterStage || 0);
+
+    // OpenAI API 호출
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        {role: 'system', content: systemPrompt},
+        { role: 'system', content: systemPrompt },
         ...messages
       ],
       temperature: 0.7,
       max_tokens: 500
     });
 
-    return {
+    const reply = response.choices[0].message.content;
+
+    res.json({
       success: true,
-      message: response.choices[0].message.content,
+      message: reply,
       usage: response.usage
-    };
+    });
   } catch (error) {
-    console.error('Chat error:', error);
-    throw new HttpsError('internal', 'AI 응답 생성 중 오류가 발생했습니다.');
+    console.error('Chat API Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'AI 응답 생성 중 오류가 발생했습니다.',
+      details: error.message
+    });
   }
 });
 
 /**
- * 일기 감정 분석 함수
+ * POST /api/analyze
+ * 일기 감정 분석 API
  */
-exports.analyzeDiaryEmotion = onCall(async (request) => {
-  // 인증 확인
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-  }
-
-  const {diaryText} = request.data;
-
-  // 입력 검증
-  if (!diaryText || typeof diaryText !== 'string' || diaryText.trim().length === 0) {
-    throw new HttpsError('invalid-argument', '일기 내용이 필요합니다.');
-  }
-
-  // 글자 수 제한 (너무 긴 경우 방지)
-  if (diaryText.length > 5000) {
-    throw new HttpsError('invalid-argument', '일기 내용이 너무 깁니다. (최대 5000자)');
-  }
-
+app.post('/api/analyze', async (req, res) => {
   try {
+    const { diaryText } = req.body;
+
+    // 입력 검증
+    if (!diaryText || typeof diaryText !== 'string' || diaryText.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: '일기 내용이 필요합니다.'
+      });
+    }
+
+    // 글자 수 제한
+    if (diaryText.length > 5000) {
+      return res.status(400).json({
+        success: false,
+        error: '일기 내용이 너무 깁니다. (최대 5000자)'
+      });
+    }
+
+    // OpenAI API 호출
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -119,12 +157,12 @@ exports.analyzeDiaryEmotion = onCall(async (request) => {
 
     const result = response.choices[0].message.content;
     
-    // JSON 파싱 시도
+    // JSON 파싱
     let emotions;
     try {
       emotions = JSON.parse(result);
     } catch (parseError) {
-      // JSON 추출 시도 (코드 블록이 포함된 경우)
+      // JSON 추출 시도
       const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         emotions = JSON.parse(jsonMatch[0]);
@@ -141,7 +179,7 @@ exports.analyzeDiaryEmotion = onCall(async (request) => {
       }
     }
 
-    // 합계 검증 (약간의 오차 허용)
+    // 합계 검증 및 정규화
     const total = Object.values(emotions).reduce((sum, val) => sum + val, 0);
     if (Math.abs(total - 100) > 5) {
       // 합계가 100이 아니면 정규화
@@ -161,16 +199,22 @@ exports.analyzeDiaryEmotion = onCall(async (request) => {
       }
     }
 
-    return {
+    res.json({
       success: true,
       emotions: emotions,
       usage: response.usage
-    };
+    });
   } catch (error) {
-    console.error('Emotion analysis error:', error);
-    throw new HttpsError('internal', '감정 분석 중 오류가 발생했습니다.');
+    console.error('Analyze API Error:', error);
+    res.status(500).json({
+      success: false,
+      error: '감정 분석 중 오류가 발생했습니다.',
+      details: error.message
+    });
   }
 });
+
+// ==================== 헬퍼 함수 ====================
 
 /**
  * 캐릭터 레벨에 따른 시스템 프롬프트 생성
@@ -195,31 +239,31 @@ function getSystemPrompt(level, stage) {
   }
 }
 
-/**
- * 사용량 모니터링 함수 (선택적)
- */
-exports.logUsage = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-  }
+// ==================== 에러 처리 ====================
 
-  const {functionName, tokens} = request.data;
-  const userId = request.auth.uid;
+// 404 핸들러
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: '요청하신 API를 찾을 수 없습니다.'
+  });
+});
 
-  try {
-    // Firestore에 사용 기록 저장
-    await admin.firestore().collection('usage_logs').add({
-      userId: userId,
-      functionName: functionName,
-      tokens: tokens,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
+// 전역 에러 핸들러
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).json({
+    success: false,
+    error: '서버 오류가 발생했습니다.',
+    details: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
 
-    return {success: true};
-  } catch (error) {
-    console.error('Usage logging error:', error);
-    // 로깅 실패는 중요하지 않으므로 무시
-    return {success: false};
-  }
+// ==================== 서버 시작 ====================
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔑 OpenAI API Key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
 });
 
