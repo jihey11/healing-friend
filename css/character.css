@@ -1,0 +1,132 @@
+/* 캐릭터 컨테이너 */
+.character-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: var(--spacing-xl);
+  padding-top: calc(var(--spacing-xl) + 8px);
+  padding-bottom: calc(var(--spacing-xl) + 8px);
+}
+
+/* 캐릭터 캔버스 */
+#character-canvas {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  cursor: pointer;
+  transition: box-shadow 0.3s;
+}
+
+#character-canvas:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+
+/* 말풍선 */
+.speech-bubble {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 15px 20px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-width: 250px;
+  animation: fadeInBounce 0.3s ease-out;
+  z-index: 10;
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid white;
+}
+
+.speech-bubble p {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  text-align: center;
+  color: var(--color-text);
+}
+
+/* 캐릭터 정보 */
+.character-info {
+  width: 100%;
+  max-width: 400px;
+  margin-top: var(--spacing-lg);
+}
+
+/* 레벨 바 */
+.level-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background: white;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.level-bar > span:first-child {
+  font-weight: bold;
+  font-size: var(--font-size-xl);
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+/* 경험치 바 */
+.exp-bar {
+  flex: 1;
+  height: 24px;
+  background: var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.exp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  transition: width 0.5s ease-out;
+  border-radius: 12px;
+}
+
+.level-bar > span:last-child {
+  font-size: var(--font-size-md);
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+/* 말풍선 애니메이션 */
+@keyframes fadeInBounce {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  50% {
+    transform: translateX(-50%) translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  #character-canvas {
+    width: 300px;
+    height: 300px;
+  }
+}
+
