@@ -47,80 +47,128 @@
 
 ## 🚀 시작하기
 
-### 필수 요구사항
-- 웹 브라우저 (Chrome, Firefox, Safari 등)
-- OpenAI API 키 (선택사항)
+### 아키텍처
 
-### 설치 및 실행
+이 프로젝트는 **백엔드/프론트엔드 분리 구조**로 설계되었습니다:
+- **프론트엔드**: Firebase Hosting에 배포
+- **백엔드**: Firebase Functions (서버리스)
+- **보안**: OpenAI API 키는 백엔드에서만 관리
 
-1. 저장소 클론
+### 빠른 시작 (로컬 개발)
+
+1. **저장소 클론**
 ```bash
-git clone https://github.com/your-username/healing-friend.git
+git clone https://github.com/jihey11/healing-friend.git
 cd healing-friend
 ```
 
-2. API 키 설정
-`index.html` 파일의 33번째 줄에서 OpenAI API 키를 설정하세요:
-```javascript
-OPENAI_API_KEY: "your_openai_api_key_here"
-```
-
-3. 로컬 서버 실행
+2. **의존성 설치**
 ```bash
-# Python 3 사용
-python -m http.server 8000
-
-# 또는 Node.js http-server 사용
-npx http-server -p 8000
+cd functions
+npm install
 ```
 
-4. 브라우저에서 `http://localhost:8000` 접속
+3. **Firebase 로그인**
+```bash
+firebase login
+```
 
-### 데모 모드
-Firebase 설정 없이 로컬 스토리지로 데모 모드 사용 가능합니다.
+4. **로컬 에뮬레이터 실행**
+```bash
+firebase emulators:start
+```
+
+5. 브라우저에서 `http://localhost:5000` 접속
+
+### 프로덕션 배포
+
+전체 배포 가이드는 **[DEPLOYMENT.md](./DEPLOYMENT.md)** 파일을 참고하세요.
+
+**요약**:
+```bash
+# Firebase 초기화
+firebase init
+
+# OpenAI API 키 설정
+firebase functions:secrets:set OPENAI_API_KEY
+
+# 배포
+firebase deploy
+```
 
 ## 🛠️ 기술 스택
 
-- **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
+### 프론트엔드
+- **Framework**: Vanilla JavaScript (ES6+)
+- **UI**: HTML5, CSS3
 - **Canvas API**: 캐릭터 렌더링 및 게임
-- **AI**: OpenAI GPT-4 API
-- **Storage**: LocalStorage (데모), Firebase Firestore (선택)
 - **Module System**: ES6 Modules
+
+### 백엔드
+- **Platform**: Firebase Functions (Node.js 18)
+- **AI**: OpenAI GPT-4o-mini API
+- **Authentication**: Firebase Auth
+- **Database**: Firebase Firestore
+- **Hosting**: Firebase Hosting
+- **Storage**: Firebase Cloud Storage (선택)
 
 ## 📁 프로젝트 구조
 
 ```
 healing-friend/
-├── index.html          # 메인 HTML
-├── css/               # 스타일시트
-│   ├── reset.css
-│   ├── variables.css
-│   ├── style.css
-│   ├── auth.css
-│   ├── character.css
-│   └── game.css
-├── js/                # JavaScript 모듈
-│   ├── app.js         # 메인 앱
-│   ├── auth.js        # 인증
-│   ├── character.js   # 캐릭터 시스템
-│   ├── chat.js        # AI 대화
-│   ├── diary.js       # 일기 및 감정 분석
-│   ├── food.js        # 음식 시스템
-│   ├── game-target.js # 과녁 게임
-│   ├── game-puzzle.js # 퍼즐 게임
-│   ├── config.js      # 설정
-│   └── utils.js       # 유틸리티
-└── assets/            # 이미지 및 리소스
+├── public/                 # 프론트엔드 (Firebase Hosting)
+│   ├── index.html         # 메인 HTML
+│   ├── css/               # 스타일시트
+│   │   ├── reset.css
+│   │   ├── variables.css
+│   │   ├── style.css
+│   │   ├── auth.css
+│   │   ├── character.css
+│   │   └── game.css
+│   ├── js/                # JavaScript 모듈
+│   │   ├── app.js         # 메인 앱
+│   │   ├── auth.js        # 인증
+│   │   ├── character.js   # 캐릭터 시스템
+│   │   ├── chat.js        # AI 대화 (Functions 호출)
+│   │   ├── diary.js       # 일기 (Functions 호출)
+│   │   ├── food.js        # 음식 시스템
+│   │   ├── game-target.js # 과녁 게임
+│   │   ├── game-puzzle.js # 퍼즐 게임
+│   │   ├── config.js      # 설정
+│   │   └── utils.js       # 유틸리티
+│   └── assets/            # 이미지 및 리소스
+├── functions/             # 백엔드 (Firebase Functions)
+│   ├── index.js          # Functions 코드
+│   │   ├── chat()        # AI 채팅 함수
+│   │   └── analyzeDiaryEmotion() # 감정 분석 함수
+│   ├── package.json      # 의존성
+│   └── .gitignore        # Git 무시 파일
+├── firebase.json         # Firebase 설정
+├── .firebaserc           # Firebase 프로젝트 설정
+├── .gitignore            # Git 무시 파일
+├── README.md             # 프로젝트 설명
+└── DEPLOYMENT.md         # 배포 가이드
 ```
 
-## 🔐 보안 주의사항
+## 🔐 보안
 
-⚠️ **중요**: API 키를 절대 공개 저장소에 올리지 마세요!
+### API 키 관리
 
-프로덕션 배포 시:
-1. 환경 변수 사용
-2. 백엔드 API 서버 구축
-3. API 키를 서버에서 관리
+✅ **안전**: OpenAI API 키는 **Firebase Functions**에서만 사용
+- 클라이언트 코드에 노출되지 않음
+- Firebase Secrets로 안전하게 관리
+- 환경 변수로 주입
+
+❌ **위험**: 프론트엔드에 API 키 하드코딩 (절대 금지!)
+
+### Firebase 보안 규칙
+
+Firestore와 Storage에 적절한 보안 규칙 설정 필요:
+- 사용자 인증 확인
+- 본인 데이터만 읽기/쓰기 허용
+- 악의적인 요청 차단
+
+자세한 내용은 [DEPLOYMENT.md](./DEPLOYMENT.md)의 "보안 규칙 설정" 섹션 참고
 
 ## 📝 라이선스
 

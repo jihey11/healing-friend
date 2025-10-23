@@ -145,54 +145,42 @@ class ChatBot {
     return array[Math.floor(Math.random() * array.length)];
   }
 
-  // GPT 응답
+  // GPT 응답 (Firebase Functions 사용)
   async getGPTResponse(userMessage, context = {}) {
     try {
-      // API 키 검증
-      if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key_here') {
-        console.warn('OpenAI API 키가 설정되지 않았습니다.');
+      // Firebase Functions 호출 가능 여부 확인
+      if (!window.firebase || !window.firebase.functions) {
+        console.warn('Firebase Functions를 사용할 수 없습니다. 로컬 응답으로 대체합니다.');
         return null;
       }
 
-      // 시스템 프롬프트 구성
-      let systemPrompt = `당신은 공감 능력이 뛰어난 힐링 친구입니다. 사용자의 감정을 이해하고 따뜻하게 위로해주세요. 친근하고 편안한 말투로 2-3문장으로 답변하세요. 이모지를 적절히 사용해주세요.`;
-      
-      // 문맥 추가
-      if (context.lastDiary) {
-        systemPrompt += `\n\n사용자의 최근 일기 요약: ${context.lastDiary.content.substring(0, 100)}...`;
-        systemPrompt += `\n주요 감정: ${context.lastDiary.selectedEmotion}`;
+      // Firebase 인증 확인
+      const currentUser = window.firebase.auth().currentUser;
+      if (!currentUser) {
+        console.warn('사용자 인증이 필요합니다.');
+        return null;
       }
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...this.conversationHistory.slice(-4), // 최근 4개 대화만
-            { role: 'user', content: userMessage }
-          ],
-          max_tokens: 150,
-          temperature: 0.8
-        })
+      // Firebase Functions 호출
+      const chatFunction = window.firebase.functions().httpsCallable('chat');
+      
+      // 메시지 준비
+      const messages = [
+        ...this.conversationHistory.slice(-4), // 최근 4개 대화만
+        { role: 'user', content: userMessage }
+      ];
+
+      const result = await chatFunction({
+        messages: messages,
+        characterLevel: this.characterData?.level || 1,
+        characterStage: this.characterData?.evolutionStage || 0
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API 오류: ${response.status} - ${errorData.error?.message || '알 수 없는 오류'}`);
+      if (!result.data || !result.data.success) {
+        throw new Error('함수 호출 실패');
       }
       
-      const data = await response.json();
-      
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('API 응답 형식이 올바르지 않습니다.');
-      }
-      
-      const reply = data.choices[0].message.content.trim();
+      const reply = result.data.message.trim();
       
       if (!reply) {
         throw new Error('빈 응답을 받았습니다.');

@@ -76,61 +76,45 @@ class DiaryManager {
   }
 
   /**
-   * GPT-4 API를 사용한 감정 분석
+   * GPT-4 API를 사용한 감정 분석 (Firebase Functions 사용)
    * @param {string} text - 분석할 텍스트
    * @returns {Object|null} 감정별 점수 또는 null
    */
   async analyzeByGPT(text) {
     try {
-      if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key_here') {
-        console.warn('OpenAI API 키가 설정되지 않았습니다.');
+      // Firebase Functions 호출 가능 여부 확인
+      if (!window.firebase || !window.firebase.functions) {
+        console.warn('Firebase Functions를 사용할 수 없습니다. 키워드 분석으로 대체합니다.');
         return null;
       }
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: '당신은 감정 분석 전문가입니다. 주어진 일기의 감정을 6가지 기본 감정(기쁨, 슬픔, 분노, 두려움, 놀람, 혐오)으로 분석하고 각 감정을 0-5점으로 평가해주세요. 반드시 JSON 형식으로만 응답하세요.'
-            },
-            {
-              role: 'user',
-              content: `다음 일기를 분석해주세요:\n\n${text}\n\n응답 형식: {"기쁨": 점수, "슬픔": 점수, "분노": 점수, "두려움": 점수, "놀람": 점수, "혐오": 점수}`
-            }
-          ],
-          max_tokens: 200,
-          temperature: 0.7
-        })
+      // Firebase 인증 확인
+      const currentUser = window.firebase.auth().currentUser;
+      if (!currentUser) {
+        console.warn('사용자 인증이 필요합니다.');
+        return null;
+      }
+
+      // Firebase Functions 호출
+      const analyzeFunction = window.firebase.functions().httpsCallable('analyzeDiaryEmotion');
+      
+      const result = await analyzeFunction({
+        diaryText: text
       });
 
-      if (!response.ok) {
-        throw new Error(`API 오류: ${response.status}`);
+      if (!result.data || !result.data.success) {
+        throw new Error('감정 분석 실패');
       }
       
-      const data = await response.json();
-      const content = data.choices[0].message.content;
+      const scores = result.data.emotions;
       
-      // JSON 파싱
-      const jsonMatch = content.match(/\{[^}]+\}/);
-      if (jsonMatch) {
-        const scores = JSON.parse(jsonMatch[0]);
-        
-        // 점수 검증 (0-5 범위)
-        for (const emotion in scores) {
-          scores[emotion] = Math.max(0, Math.min(5, scores[emotion]));
-        }
-        
-        return scores;
-      } else {
-        throw new Error('JSON 파싱 실패');
+      // 0-5 범위로 변환 (백엔드에서는 0-100으로 반환)
+      const convertedScores = {};
+      for (const emotion in scores) {
+        convertedScores[emotion] = Math.round((scores[emotion] / 100) * 5 * 10) / 10;
       }
+      
+      return convertedScores;
     } catch (error) {
       console.error('GPT 분석 실패:', error);
       return null;
