@@ -19,20 +19,17 @@
     
     <!-- 환경변수 설정 -->
     <script>
-        // API 설정 - 배포 시 Railway URL로 변경하세요
+        // API 키 설정 (실제 키로 교체하세요)
         window.ENV = {
-            // 백엔드 API URL (배포 시 Railway URL로 변경)
-            API_URL: "https://your-backend-url.railway.app",
+            // Firebase 설정
+            FIREBASE_API_KEY: "your_firebase_api_key_here",
+            FIREBASE_AUTH_DOMAIN: "your-project.firebaseapp.com",
+            FIREBASE_PROJECT_ID: "your-project-id",
+            FIREBASE_STORAGE_BUCKET: "your-project.appspot.com",
+            FIREBASE_MESSAGING_SENDER_ID: "your_sender_id",
+            FIREBASE_APP_ID: "your_app_id",
             
-            // Firebase 설정 (현재는 사용하지 않음, 데모 모드 사용 중)
-            FIREBASE_API_KEY: "",
-            FIREBASE_AUTH_DOMAIN: "",
-            FIREBASE_PROJECT_ID: "",
-            FIREBASE_STORAGE_BUCKET: "",
-            FIREBASE_MESSAGING_SENDER_ID: "",
-            FIREBASE_APP_ID: "",
-            
-            // OpenAI API 키 (프론트엔드에서 직접 사용하지 않음, 백엔드에서만 사용)
+            // OpenAI API 키는 백엔드에서만 사용 (여기에 넣지 마세요!)
             OPENAI_API_KEY: ""
         };
     </script>
