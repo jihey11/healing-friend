@@ -583,13 +583,20 @@ function setupHomeChatUI(uid, characterData) {
 
     try {
       // AI 응답 받기
-      const response = await chatBot.sendMessage(message);
+      const result = await chatBot.processMessage(message);
+      const response = result.response;
 
       // 타이핑 인디케이터 제거
       removeHomeTypingIndicator(typingId);
 
       // AI 응답 추가
       await addHomeMessageWithTyping(response, 'bot');
+
+      // 대화 이력에 추가
+      chatBot.conversationHistory.push(
+        { role: 'user', content: message },
+        { role: 'assistant', content: response }
+      );
 
       // 메시지 저장
       await saveMessage(uid, message, response);
