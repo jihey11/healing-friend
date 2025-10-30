@@ -685,4 +685,7 @@ function removeHomeTypingIndicator(id) {
 // 전역으로 export
 window.setupHomeChatUI = setupHomeChatUI;
 
+// Named export 추가
+export { setupHomeChatUI };
+
 export default ChatBot;
