@@ -3,6 +3,7 @@ import { setupAuthUI } from './auth.js';
 import { Character } from './character.js';
 import { setupDiaryUI } from './diary.js';
 import { setupChatUI } from './chat.js';
+import { setupHomeChatUI } from './chat.js';
 import { setupTargetGame } from './game-target.js';
 import { setupPuzzleGame } from './game-puzzle.js';
 import { updateDailyTip, showToast } from './utils.js';
@@ -459,6 +460,7 @@ async function setupFeatureUIs(userData) {
     // 채팅 UI 설정
     if (window.character) {
       setupChatUI(userData.uid, window.character);
+      setupHomeChatUI(userData.uid, window.character);
     }
     
     // 게임 UI 설정

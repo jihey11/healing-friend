@@ -5,9 +5,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: var(--spacing-xl);
-  padding-top: calc(var(--spacing-xl) + 8px);
-  padding-bottom: calc(var(--spacing-xl) + 8px);
+  padding: var(--spacing-md);
 }
 
 /* 캐릭터 캔버스 */
@@ -17,6 +15,8 @@
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   cursor: pointer;
   transition: box-shadow 0.3s;
+  width: 400px;
+  height: 400px;
 }
 
 #character-canvas:hover {
@@ -62,8 +62,8 @@
 /* 캐릭터 정보 */
 .character-info {
   width: 100%;
-  max-width: 400px;
-  margin-top: var(--spacing-lg);
+  max-width: 450px;
+  margin-top: var(--spacing-md);
 }
 
 /* 레벨 바 */

@@ -139,13 +139,16 @@
         <main class="main-content">
             <!-- 홈 화면 -->
             <div id="home-view" class="view active">
-                <div class="character-container">
-                    <canvas id="character-canvas" width="520" height="520"></canvas>
-                    <div id="speech-bubble" class="speech-bubble hidden">
-                        <p id="speech-text"></p>
-                    </div>
-                </div>
-                <div class="character-info">
+                <div class="home-layout">
+                    <!-- 왼쪽: 캐릭터 영역 -->
+                    <div class="home-left">
+                        <div class="character-container">
+                            <canvas id="character-canvas" width="400" height="400"></canvas>
+                            <div id="speech-bubble" class="speech-bubble hidden">
+                                <p id="speech-text"></p>
+                            </div>
+                        </div>
+                        <div class="character-info">
                     <div class="level-bar">
                         <span>Lv.<span id="character-level">1</span></span>
                         <div class="exp-bar">
@@ -235,6 +238,26 @@
                     <div class="tip-banner">
                         <span>💡</span>
                         <p id="daily-tip"></p>
+                    </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 오른쪽: 채팅 영역 -->
+                    <div class="home-right">
+                        <div class="home-chat-container">
+                            <div class="home-chat-header">
+                                <h3>💬 친구와 대화하기</h3>
+                            </div>
+                            <div class="home-chat-messages" id="home-chat-messages">
+                                <div class="chat-message bot">
+                                    <div class="message-bubble">안녕! 오늘 기분은 어때? 😊</div>
+                                </div>
+                            </div>
+                            <div class="home-chat-input-container">
+                                <input type="text" id="home-chat-input" placeholder="메시지를 입력하세요..." maxlength="500">
+                                <button id="home-chat-send">전송</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

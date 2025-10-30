@@ -547,4 +547,142 @@ async function loadPreviousMessages() {
   }
 }
 
+// ========== 홈 화면 채팅 ==========
+
+// 홈 화면 채팅 초기화
+function setupHomeChatUI(uid, characterData) {
+  const input = document.getElementById('home-chat-input');
+  const sendButton = document.getElementById('home-chat-send');
+  const messagesContainer = document.getElementById('home-chat-messages');
+
+  if (!input || !sendButton || !messagesContainer) {
+    console.warn('홈 채팅 UI 요소를 찾을 수 없습니다.');
+    return;
+  }
+
+  // ChatBot 인스턴스 생성
+  const chatBot = new ChatBot(uid, characterData);
+  
+  // 대화 히스토리 로드
+  chatBot.loadConversationHistory();
+
+  // 메시지 전송 함수
+  async function sendHomeMessage() {
+    const message = input.value.trim();
+    if (!message || chatBot.isProcessing) return;
+
+    chatBot.isProcessing = true;
+    input.value = '';
+    sendButton.disabled = true;
+
+    // 사용자 메시지 추가
+    addHomeMessage(message, 'user');
+
+    // 타이핑 인디케이터 표시
+    const typingId = showHomeTypingIndicator();
+
+    try {
+      // AI 응답 받기
+      const response = await chatBot.sendMessage(message);
+
+      // 타이핑 인디케이터 제거
+      removeHomeTypingIndicator(typingId);
+
+      // AI 응답 추가
+      await addHomeMessageWithTyping(response, 'bot');
+
+      // 메시지 저장
+      await saveMessage(uid, message, response);
+    } catch (error) {
+      console.error('메시지 전송 실패:', error);
+      removeHomeTypingIndicator(typingId);
+      addHomeMessage('미안해, 지금은 답할 수 없어. 잠시 후 다시 시도해줘! 😅', 'bot');
+    } finally {
+      chatBot.isProcessing = false;
+      sendButton.disabled = false;
+    }
+  }
+
+  // 이벤트 리스너
+  sendButton.addEventListener('click', sendHomeMessage);
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendHomeMessage();
+    }
+  });
+
+  console.log('홈 채팅 UI 설정 완료');
+}
+
+// 홈 화면 메시지 추가
+function addHomeMessage(text, sender) {
+  const messagesContainer = document.getElementById('home-chat-messages');
+  if (!messagesContainer) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${sender}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.textContent = text;
+
+  messageDiv.appendChild(bubble);
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// 홈 화면 타이핑 효과 메시지
+async function addHomeMessageWithTyping(text, sender) {
+  const messagesContainer = document.getElementById('home-chat-messages');
+  if (!messagesContainer) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${sender}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+
+  messageDiv.appendChild(bubble);
+  messagesContainer.appendChild(messageDiv);
+
+  // 타이핑 효과
+  let currentText = '';
+  for (let i = 0; i < text.length; i++) {
+    currentText += text[i];
+    bubble.textContent = currentText;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+}
+
+// 홈 화면 타이핑 인디케이터
+function showHomeTypingIndicator() {
+  const id = `home-typing-${Date.now()}`;
+  const messagesContainer = document.getElementById('home-chat-messages');
+  if (!messagesContainer) return id;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message bot';
+  messageDiv.id = id;
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble typing';
+  bubble.innerHTML = '<span></span><span></span><span></span>';
+
+  messageDiv.appendChild(bubble);
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  return id;
+}
+
+// 홈 화면 타이핑 인디케이터 제거
+function removeHomeTypingIndicator(id) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.remove();
+  }
+}
+
+// 전역으로 export
+window.setupHomeChatUI = setupHomeChatUI;
+
 export default ChatBot;
