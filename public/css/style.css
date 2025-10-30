@@ -502,33 +502,67 @@ button {
 .diary-layout {
   display: flex;
   gap: 24px;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   height: calc(100vh - 200px);
+  align-items: center;
+  justify-content: center;
 }
 
 .diary-left {
-  flex: 0 0 500px;
+  flex: 1;
+  max-width: 800px;
   overflow-y: auto;
 }
 
 .diary-right {
-  flex: 1;
-  min-width: 400px;
+  flex: 0 0 400px;
+  min-width: 350px;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
-/* 일기 컨테이너 */
+/* 일기 컨테이너 - 책 모양 디자인 */
 .diary-container {
-  max-width: 500px;
-  padding: var(--spacing-lg);
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 50px;
+  background: linear-gradient(to bottom, #fff9e6 0%, #ffffff 10%, #ffffff 90%, #fff9e6 100%);
+  border-radius: 8px;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid #d4a574;
+  border-left: 3px solid #8B7355;
+  position: relative;
+}
+
+/* 책 페이지 선 효과 */
+.diary-container::before {
+  content: '';
+  position: absolute;
+  left: 45px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, 
+    transparent 0%, 
+    rgba(255, 182, 193, 0.3) 5%, 
+    rgba(255, 182, 193, 0.3) 95%, 
+    transparent 100%);
 }
 
 .diary-container h2 {
   text-align: center;
-  margin-bottom: var(--spacing-lg);
-  color: var(--color-text);
+  margin-bottom: var(--spacing-xl);
+  color: #5D4E37;
+  font-size: 28px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  letter-spacing: 2px;
 }
 
 /* 일기 목록 컨테이너 */
@@ -645,73 +679,145 @@ button {
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
   flex-wrap: wrap;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  border: 1px dashed #d4a574;
 }
 
 .emotion-btn {
-  width: 60px;
-  height: 60px;
-  font-size: 32px;
-  border: 3px solid transparent;
-  border-radius: var(--radius-md);
-  background: white;
+  width: 70px;
+  height: 70px;
+  font-size: 36px;
+  border: 3px solid #f0e6d2;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%);
   cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .emotion-btn:hover {
-  transform: scale(1.1);
-  box-shadow: var(--shadow-md);
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .emotion-btn.selected {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  transform: scale(1.15);
+  border-color: #8B7355;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  transform: scale(1.2);
+  box-shadow: 
+    0 6px 16px rgba(255, 215, 0, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
-/* 일기 내용 입력 */
+/* 일기 내용 입력 - 노트 스타일 */
 #diary-content {
   width: 100%;
-  min-height: 300px;
-  padding: var(--spacing-md);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-lg);
-  line-height: 1.6;
+  min-height: 350px;
+  padding: 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 2;
   resize: vertical;
-  font-family: inherit;
-  transition: border-color 0.3s;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.3s;
+  background: 
+    linear-gradient(to right, #FFB6C1 1px, transparent 1px),
+    linear-gradient(to bottom, transparent 0px, transparent 31px, #E8E8E8 31px, #E8E8E8 32px);
+  background-size: 100% 32px;
+  background-position: 0 8px;
+  background-color: #fffef9;
+  color: #333;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #diary-content:focus {
   outline: none;
-  border-color: var(--color-primary);
+  background-color: #ffffff;
+  box-shadow: 
+    inset 0 1px 3px rgba(0, 0, 0, 0.1),
+    0 0 0 3px rgba(139, 115, 85, 0.1);
+}
+
+#diary-content::placeholder {
+  color: #999;
+  font-style: italic;
 }
 
 /* 글자 수 카운트 */
 .char-count {
   text-align: right;
   margin-top: var(--spacing-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-light);
+  font-size: 14px;
+  color: #8B7355;
+  font-weight: 500;
 }
 
 /* 일기 액션 버튼들 */
 .diary-actions {
   display: flex;
   gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 2px dashed #e0d5c7;
 }
 
 .diary-actions button {
   flex: 1;
-  padding: 14px;
-  font-size: var(--font-size-lg);
+  padding: 16px 24px;
+  font-size: 16px;
   font-weight: bold;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.3s ease;
+  border: 2px solid #8B7355;
+  background: linear-gradient(135deg, #f5f0e8 0%, #ffffff 100%);
+  color: #5D4E37;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.diary-actions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.diary-actions .btn-primary {
+  background: linear-gradient(135deg, #8B7355 0%, #6B5345 100%);
+  color: white;
+  border-color: #6B5345;
+}
+
+.diary-actions .btn-primary:hover {
+  background: linear-gradient(135deg, #6B5345 0%, #5B4335 100%);
+}
+
+.diary-actions .btn-primary:disabled {
+  background: #ccc;
+  border-color: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 일기 에러 메시지 */
+#diary-error {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-top: var(--spacing-sm);
+  padding: 12px;
+  background: rgba(211, 47, 47, 0.1);
+  border-left: 3px solid #d32f2f;
+  border-radius: 4px;
+  display: none;
+}
+
+#diary-error.show {
+  display: block;
 }
 
 /* 토스트 메시지 */
@@ -983,6 +1089,7 @@ button {
   .diary-left {
     flex: none;
     width: 100%;
+    max-width: 100%;
   }
   
   .diary-right {
@@ -994,22 +1101,34 @@ button {
   
   /* 일기 모바일 스타일 */
   .diary-container {
-    padding: var(--spacing-md);
+    padding: 24px 20px;
+    border-left-width: 2px;
+  }
+  
+  .diary-container::before {
+    left: 20px;
+  }
+  
+  .diary-container h2 {
+    font-size: 22px;
   }
   
   .emotion-selector {
     gap: var(--spacing-sm);
+    padding: 16px;
   }
   
   .emotion-btn {
-    width: 50px;
-    height: 50px;
-    font-size: 28px;
+    width: 55px;
+    height: 55px;
+    font-size: 30px;
   }
   
   #diary-content {
     min-height: 250px;
-    font-size: var(--font-size-md);
+    font-size: 15px;
+    padding: 16px;
+    line-height: 1.8;
   }
   
   .diary-actions {
@@ -1017,8 +1136,8 @@ button {
   }
   
   .diary-actions button {
-    padding: 12px;
-    font-size: var(--font-size-md);
+    padding: 14px;
+    font-size: 15px;
   }
   
   /* 채팅 모바일 스타일 */
@@ -1080,18 +1199,32 @@ button {
   
   /* 일기 소형 모바일 스타일 */
   .diary-container {
-    padding: var(--spacing-sm);
+    padding: 20px 16px;
+  }
+  
+  .diary-container h2 {
+    font-size: 20px;
+  }
+  
+  .emotion-selector {
+    padding: 12px;
   }
   
   .emotion-btn {
-    width: 45px;
-    height: 45px;
-    font-size: 24px;
+    width: 50px;
+    height: 50px;
+    font-size: 26px;
   }
   
   #diary-content {
     min-height: 200px;
-    font-size: var(--font-size-sm);
+    font-size: 14px;
+    padding: 12px;
+  }
+  
+  .diary-actions button {
+    padding: 12px;
+    font-size: 14px;
   }
   
   /* 채팅 소형 모바일 스타일 */
