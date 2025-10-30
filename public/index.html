@@ -264,23 +264,39 @@
 
             <!-- 일기 화면 -->
             <div id="diary-view" class="view">
-                <div class="diary-container">
-                    <h2>오늘의 기분</h2>
-                    <div class="emotion-selector">
-                        <button class="emotion-btn" data-emotion="기쁨">😊</button>
-                        <button class="emotion-btn" data-emotion="슬픔">😢</button>
-                        <button class="emotion-btn" data-emotion="분노">😡</button>
-                        <button class="emotion-btn" data-emotion="두려움">😰</button>
-                        <button class="emotion-btn" data-emotion="놀람">😲</button>
-                        <button class="emotion-btn" data-emotion="혐오">😖</button>
+                <div class="diary-layout">
+                    <!-- 왼쪽: 일기 작성 -->
+                    <div class="diary-left">
+                        <div class="diary-container">
+                            <h2>오늘의 기분</h2>
+                            <div class="emotion-selector">
+                                <button class="emotion-btn" data-emotion="기쁨">😊</button>
+                                <button class="emotion-btn" data-emotion="슬픔">😢</button>
+                                <button class="emotion-btn" data-emotion="분노">😡</button>
+                                <button class="emotion-btn" data-emotion="두려움">😰</button>
+                                <button class="emotion-btn" data-emotion="놀람">😲</button>
+                                <button class="emotion-btn" data-emotion="혐오">😖</button>
+                            </div>
+                            <textarea id="diary-content" placeholder="오늘 하루는 어땠나요? (최소 50자)" maxlength="1000"></textarea>
+                            <div class="char-count"><span id="char-count">0</span>/50</div>
+                            <div class="diary-actions">
+                                <button id="diary-cancel" class="btn-secondary">취소</button>
+                                <button id="diary-save" class="btn-primary" disabled>저장</button>
+                            </div>
+                            <p class="error-msg" id="diary-error"></p>
+                        </div>
                     </div>
-                    <textarea id="diary-content" placeholder="오늘 하루는 어땠나요? (최소 50자)" maxlength="1000"></textarea>
-                    <div class="char-count"><span id="char-count">0</span>/50</div>
-                    <div class="diary-actions">
-                        <button id="diary-cancel" class="btn-secondary">취소</button>
-                        <button id="diary-save" class="btn-primary" disabled>저장</button>
+                    
+                    <!-- 오른쪽: 일기 목록 -->
+                    <div class="diary-right">
+                        <div class="diary-list-container">
+                            <div class="diary-list-header">
+                                <h3>📖 일기 목록</h3>
+                                <button id="load-diary-btn" class="btn-secondary">새로고침</button>
+                            </div>
+                            <div id="diary-list" class="diary-list"></div>
+                        </div>
                     </div>
-                    <p class="error-msg" id="diary-error"></p>
                 </div>
             </div>
 
@@ -328,12 +344,6 @@
                             </label>
                         </div>
                         <button id="logout-btn" class="btn-secondary" style="margin-top: 16px;">로그아웃</button>
-                    </section>
-                    
-                    <section class="diary-list-section">
-                        <h2>일기 목록</h2>
-                        <button id="load-diary-btn" class="btn-primary" style="margin-bottom: 16px; width: 100%;">일기 목록 보기</button>
-                        <div id="diary-list"></div>
                     </section>
                 </div>
             </div>

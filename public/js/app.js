@@ -740,7 +740,7 @@ async function setupMyPage(userData) {
 }
 
 /**
- * 일기 목록 버튼 설정
+ * 일기 목록 버튼 설정 및 자동 로드
  */
 function setupDiaryListButton(uid) {
   const loadDiaryBtn = document.getElementById('load-diary-btn');
@@ -748,27 +748,27 @@ function setupDiaryListButton(uid) {
   
   if (!loadDiaryBtn || !diaryListContainer) return;
   
-  // 초기에는 일기 목록 숨김
-  diaryListContainer.style.display = 'none';
-  
-  // 버튼 클릭 이벤트
+  // 버튼 클릭 이벤트 (새로고침 기능)
   loadDiaryBtn.addEventListener('click', async () => {
-    // 이미 보이는 상태면 숨김
-    if (diaryListContainer.style.display === 'block') {
-      diaryListContainer.style.display = 'none';
-      loadDiaryBtn.textContent = '일기 목록 보기';
-    } else {
-      // 일기 목록 로드 및 표시
-      loadDiaryBtn.textContent = '로딩 중...';
-      loadDiaryBtn.disabled = true;
-      
-      await loadDiaryList(uid);
-      
-      diaryListContainer.style.display = 'block';
-      loadDiaryBtn.textContent = '일기 목록 숨기기';
-      loadDiaryBtn.disabled = false;
-    }
+    loadDiaryBtn.textContent = '로딩 중...';
+    loadDiaryBtn.disabled = true;
+    
+    await loadDiaryList(uid);
+    
+    loadDiaryBtn.textContent = '새로고침';
+    loadDiaryBtn.disabled = false;
   });
+  
+  // 일기 탭으로 전환될 때 자동 로드
+  const diaryViewBtn = document.querySelector('[data-view="diary"]');
+  if (diaryViewBtn) {
+    diaryViewBtn.addEventListener('click', () => {
+      setTimeout(() => loadDiaryList(uid), 100);
+    });
+  }
+  
+  // 초기 로드
+  setTimeout(() => loadDiaryList(uid), 500);
 }
 
 /**
@@ -820,7 +820,13 @@ async function loadDiaryList(uid) {
     const diaries = JSON.parse(localStorage.getItem(storageKey) || '[]');
     
     if (diaries.length === 0) {
-      diaryListContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 40px 0;">아직 작성한 일기가 없어요.</p>';
+      diaryListContainer.innerHTML = `
+        <div class="diary-list-empty">
+          <p style="font-size: 48px;">📝</p>
+          <p>아직 작성한 일기가 없어요</p>
+          <p style="font-size: 14px; margin-top: 8px;">일기를 작성하면 여기에 표시됩니다</p>
+        </div>
+      `;
       return;
     }
     
@@ -871,43 +877,14 @@ function createDiaryItem(diaryId, diary, uid) {
     : diary.content;
   
   item.innerHTML = `
-    <div class="diary-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <span class="diary-date" style="font-size: 14px; color: #666;">${dateStr}</span>
-      <span class="diary-emotion" style="font-size: 24px;">${emotionEmojis[diary.selectedEmotion] || '😊'}</span>
+    <div class="diary-item-header">
+      <span class="diary-item-date">${dateStr}</span>
+      <span class="diary-item-emotion">${emotionEmojis[diary.selectedEmotion] || '😊'}</span>
     </div>
-    <p class="diary-preview" style="color: #333; line-height: 1.6; margin-bottom: 12px;">${preview}</p>
-    <div class="diary-actions">
-      <button class="btn-view" style="padding: 8px 16px; background: var(--color-primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">상세보기</button>
-    </div>
+    <p class="diary-item-preview">${preview}</p>
   `;
   
-  item.style.cssText = `
-    background: white;
-    padding: 16px;
-    margin-bottom: 12px;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s;
-    cursor: pointer;
-  `;
-  
-  item.addEventListener('mouseenter', () => {
-    item.style.transform = 'translateX(5px)';
-    item.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-  });
-  
-  item.addEventListener('mouseleave', () => {
-    item.style.transform = 'translateX(0)';
-    item.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-  });
-  
-  // 상세보기
-  item.querySelector('.btn-view').addEventListener('click', (e) => {
-    e.stopPropagation();
-    showDiaryDetail(diaryId, diary, uid);
-  });
-  
-  // 아이템 전체 클릭 시에도 상세보기
+  // 아이템 클릭 시 상세보기
   item.addEventListener('click', () => {
     showDiaryDetail(diaryId, diary, uid);
   });
