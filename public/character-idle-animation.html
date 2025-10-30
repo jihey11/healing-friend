@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>캐릭터 Idle Animation - Canvas 2D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        canvas {
+            display: block;
+            background: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+
+        .fps {
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 캐릭터 Idle Animation</h1>
+        <canvas id="characterCanvas" width="400" height="400"></canvas>
+        <div class="info">
+            FPS: <span class="fps">8</span> | Delta Time 기반 애니메이션
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ========================================
+         * 캐릭터 Idle Animation 시스템
+         * ========================================
+         * - requestAnimationFrame으로 부드러운 렌더링
+         * - Delta Time으로 8fps 프레임 전환 제어
+         * - 제자리에서 움직이는 idle 모션
+         */
+
+        // ==================== 설정 ====================
+        const CONFIG = {
+            canvas: {
+                width: 400,
+                height: 400,
+                centerX: 200,
+                centerY: 200
+            },
+            animation: {
+                targetFPS: 8,                      // 목표 프레임 속도
+                frameDuration: 1000 / 8,           // 프레임 당 시간 (125ms)
+                totalFrames: 8                     // 총 프레임 수
+            },
+            character: {
+                baseRadius: 80,                    // 기본 반지름
+                color: '#FFD700',                  // 캐릭터 색상
+                strokeColor: '#FFA500',            // 외곽선 색상
+                eyeColor: '#000000'                // 눈 색상
+            }
+        };
+
+        // ==================== Canvas 초기화 ====================
+        const canvas = document.getElementById('characterCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // ==================== 애니메이션 상태 ====================
+        let lastFrameTime = 0;                     // 마지막 프레임 시간
+        let accumulatedTime = 0;                   // 누적 시간
+        let currentFrame = 0;                      // 현재 프레임 인덱스
+        let animationId = null;                    // 애니메이션 ID
+
+        /**
+         * ==================== 프레임별 애니메이션 데이터 ====================
+         * 각 프레임마다 캐릭터의 변화를 정의
+         * - scaleY: Y축 크기 변화 (숨쉬는 효과)
+         * - offsetY: Y축 위치 변화 (둥실둥실)
+         * - squish: 찌그러짐 정도
+         */
+        const ANIMATION_FRAMES = [
+            { scaleY: 1.00, offsetY: 0,   squish: 1.00 },   // 프레임 0
+            { scaleY: 1.02, offsetY: -2,  squish: 0.98 },   // 프레임 1
+            { scaleY: 1.05, offsetY: -4,  squish: 0.95 },   // 프레임 2
+            { scaleY: 1.03, offsetY: -3,  squish: 0.97 },   // 프레임 3
+            { scaleY: 1.00, offsetY: 0,   squish: 1.00 },   // 프레임 4
+            { scaleY: 0.98, offsetY: 2,   squish: 1.02 },   // 프레임 5
+            { scaleY: 0.95, offsetY: 4,   squish: 1.05 },   // 프레임 6
+            { scaleY: 0.97, offsetY: 3,   squish: 1.03 }    // 프레임 7
+        ];
+
+        /**
+         * ==================== 캔버스 초기화 ====================
+         * 매 프레임마다 캔버스를 완전히 지움
+         */
+        function clearCanvas() {
+            ctx.clearRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
+        }
+
+        /**
+         * ==================== 캐릭터 몸체 그리기 ====================
+         * 찹쌀떡(모찌) 스타일의 부드러운 원형 캐릭터
+         * @param {number} cx - 중심 X 좌표
+         * @param {number} cy - 중심 Y 좌표
+         * @param {number} radius - 반지름
+         * @param {number} scaleY - Y축 스케일
+         * @param {number} squish - 찌그러짐 정도
+         */
+        function drawCharacterBody(cx, cy, radius, scaleY, squish) {
+            const rx = radius * squish;              // X축 반지름
+            const ry = radius * scaleY;              // Y축 반지름
+            
+            // 베지어 곡선을 위한 제어점 계산
+            const k = 0.552284749831;               // 원을 베지어로 근사하는 상수
+            const ox = rx * k;
+            const oy = ry * k;
+
+            // 그림자 효과
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 8;
+
+            // 몸체 그리기
+            ctx.fillStyle = CONFIG.character.color;
+            ctx.strokeStyle = CONFIG.character.strokeColor;
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            
+            // 상단 (12시 방향)
+            ctx.moveTo(cx, cy - ry);
+            
+            // 오른쪽 상단 곡선 (12시 → 3시)
+            ctx.bezierCurveTo(
+                cx + ox, cy - ry,
+                cx + rx, cy - oy,
+                cx + rx, cy
+            );
+            
+            // 오른쪽 하단 곡선 (3시 → 6시)
+            ctx.bezierCurveTo(
+                cx + rx, cy + oy,
+                cx + ox, cy + ry,
+                cx, cy + ry
+            );
+            
+            // 왼쪽 하단 곡선 (6시 → 9시)
+            ctx.bezierCurveTo(
+                cx - ox, cy + ry,
+                cx - rx, cy + oy,
+                cx - rx, cy
+            );
+            
+            // 왼쪽 상단 곡선 (9시 → 12시)
+            ctx.bezierCurveTo(
+                cx - rx, cy - oy,
+                cx - ox, cy - ry,
+                cx, cy - ry
+            );
+
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 그림자 제거 (다음 그리기에 영향 안 주게)
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+        }
+
+        /**
+         * ==================== 눈 그리기 ====================
+         * 귀여운 동그란 눈 2개
+         * @param {number} cx - 중심 X 좌표
+         * @param {number} cy - 중심 Y 좌표
+         * @param {number} offsetY - Y축 오프셋
+         */
+        function drawEyes(cx, cy, offsetY) {
+            const eyeOffsetX = 25;                  // 눈 간격
+            const eyeOffsetY = -10 + offsetY;       // 눈 높이 (애니메이션 반영)
+            const eyeRadius = 5;                    // 눈 크기
+
+            ctx.fillStyle = CONFIG.character.eyeColor;
+            
+            // 왼쪽 눈
+            ctx.beginPath();
+            ctx.arc(cx - eyeOffsetX, cy + eyeOffsetY, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 오른쪽 눈
+            ctx.beginPath();
+            ctx.arc(cx + eyeOffsetX, cy + eyeOffsetY, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * ==================== 입 그리기 ====================
+         * 부드러운 미소
+         * @param {number} cx - 중심 X 좌표
+         * @param {number} cy - 중심 Y 좌표
+         * @param {number} offsetY - Y축 오프셋
+         */
+        function drawMouth(cx, cy, offsetY) {
+            const mouthY = cy + 15 + offsetY;       // 입 위치
+            const mouthWidth = 30;                  // 입 너비
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+
+            ctx.beginPath();
+            ctx.arc(cx, mouthY, mouthWidth * 0.5, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+        }
+
+        /**
+         * ==================== 볼터치 그리기 ====================
+         * 귀여운 핑크 볼터치
+         * @param {number} cx - 중심 X 좌표
+         * @param {number} cy - 중심 Y 좌표
+         * @param {number} offsetY - Y축 오프셋
+         */
+        function drawBlush(cx, cy, offsetY) {
+            const blushOffsetX = 45;
+            const blushOffsetY = 10 + offsetY;
+
+            ctx.fillStyle = 'rgba(255, 200, 220, 0.6)';
+
+            // 왼쪽 볼
+            ctx.beginPath();
+            ctx.ellipse(cx - blushOffsetX, cy + blushOffsetY, 12, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 오른쪽 볼
+            ctx.beginPath();
+            ctx.ellipse(cx + blushOffsetX, cy + blushOffsetY, 12, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * ==================== 완성된 캐릭터 그리기 ====================
+         * 현재 프레임의 애니메이션 데이터를 적용해서 캐릭터 렌더링
+         * @param {number} frameIndex - 현재 프레임 인덱스
+         */
+        function drawCharacter(frameIndex) {
+            // 현재 프레임의 애니메이션 데이터 가져오기
+            const frameData = ANIMATION_FRAMES[frameIndex];
+            
+            // 캐릭터 중심 위치 (Y축만 움직임)
+            const cx = CONFIG.canvas.centerX;
+            const cy = CONFIG.canvas.centerY + frameData.offsetY;
+            const radius = CONFIG.character.baseRadius;
+
+            // 몸체 그리기
+            drawCharacterBody(cx, cy, radius, frameData.scaleY, frameData.squish);
+
+            // 얼굴 요소 그리기
+            drawEyes(cx, cy, frameData.offsetY);
+            drawMouth(cx, cy, frameData.offsetY);
+            drawBlush(cx, cy, frameData.offsetY);
+        }
+
+        /**
+         * ==================== 애니메이션 루프 ====================
+         * requestAnimationFrame을 사용한 부드러운 렌더링
+         * Delta Time으로 8fps 프레임 전환 제어
+         * @param {number} currentTime - 현재 시간 (밀리초)
+         */
+        function animate(currentTime) {
+            // Delta Time 계산 (이전 프레임과의 시간 차이)
+            const deltaTime = currentTime - lastFrameTime;
+            
+            // 시간 누적
+            accumulatedTime += deltaTime;
+
+            // 프레임 전환 시점 체크 (125ms마다)
+            if (accumulatedTime >= CONFIG.animation.frameDuration) {
+                // 다음 프레임으로 전환
+                currentFrame = (currentFrame + 1) % CONFIG.animation.totalFrames;
+                
+                // 누적 시간 리셋 (남은 시간 유지)
+                accumulatedTime -= CONFIG.animation.frameDuration;
+            }
+
+            // 캔버스 초기화
+            clearCanvas();
+
+            // 현재 프레임의 캐릭터 그리기
+            drawCharacter(currentFrame);
+
+            // 마지막 프레임 시간 업데이트
+            lastFrameTime = currentTime;
+
+            // 다음 프레임 예약
+            animationId = requestAnimationFrame(animate);
+        }
+
+        /**
+         * ==================== 애니메이션 시작 ====================
+         * 초기화 및 애니메이션 루프 시작
+         */
+        function startAnimation() {
+            console.log('🎬 애니메이션 시작!');
+            console.log(`⚙️ 설정: ${CONFIG.animation.targetFPS}fps, ${CONFIG.animation.totalFrames}프레임`);
+            
+            // 초기 시간 설정
+            lastFrameTime = performance.now();
+            accumulatedTime = 0;
+            currentFrame = 0;
+
+            // 첫 프레임 그리기
+            clearCanvas();
+            drawCharacter(currentFrame);
+
+            // 애니메이션 루프 시작
+            animationId = requestAnimationFrame(animate);
+        }
+
+        /**
+         * ==================== 애니메이션 정지 ====================
+         * 디버깅이나 일시정지 시 사용
+         */
+        function stopAnimation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                console.log('⏸️ 애니메이션 정지');
+            }
+        }
+
+        // ==================== 페이지 로드 시 자동 시작 ====================
+        window.addEventListener('load', () => {
+            console.log('✅ 페이지 로드 완료');
+            startAnimation();
+        });
+
+        // ==================== 페이지 이탈 시 정리 ====================
+        window.addEventListener('beforeunload', () => {
+            stopAnimation();
+        });
+
+        // ==================== 디버깅용: 전역 함수로 노출 ====================
+        window.characterAnimation = {
+            start: startAnimation,
+            stop: stopAnimation,
+            getCurrentFrame: () => currentFrame,
+            getFrameData: () => ANIMATION_FRAMES[currentFrame]
+        };
+
+    </script>
+</body>
+</html>
+
+
