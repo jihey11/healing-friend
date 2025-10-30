@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat Example - GPT API 채팅</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/simple-chat.css">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .example-container {
+            max-width: 800px;
+            width: 100%;
+            height: 600px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            padding: 24px;
+        }
+
+        h1 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #chat-container {
+            height: calc(100% - 64px);
+        }
+
+        .info {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+
+    <!-- 환경 변수 설정 -->
+    <script>
+        window.ENV = {
+            // Railway 백엔드 URL (실제 URL로 변경하세요)
+            API_URL: "https://healing-friend-production.up.railway.app",
+        };
+    </script>
+</head>
+<body>
+    <div class="example-container">
+        <h1>🤖 Simple Chat - GPT API</h1>
+        
+        <!-- 채팅 컨테이너 -->
+        <div id="chat-container"></div>
+
+        <!-- 정보 -->
+        <div class="info">
+            💡 이 채팅은 Railway 백엔드를 통해 OpenAI GPT API를 사용합니다.
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script type="module">
+        // Simple Chat 모듈 import
+        import { setupSimpleChat } from './js/simple-chat.js';
+
+        // 채팅 초기화
+        const chat = setupSimpleChat(
+            'chat-container',     // 컨테이너 ID
+            'demo_user_001',      // 사용자 ID
+            {
+                characterLevel: 5,  // 캐릭터 레벨 (선택사항)
+                characterStage: 1   // 캐릭터 단계 (선택사항)
+            }
+        );
+
+        console.log('Simple Chat 초기화 완료:', chat);
+    </script>
+</body>
+</html>
+
