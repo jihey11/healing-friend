@@ -15,68 +15,196 @@
   const targetScore = 90; // 최종 진화를 위한 점수
   const targetEvolutionStage = 3; // 최종 진화 단계
 
-  // Firebase 초기화 대기 함수
-  async function waitForFirebase(maxWait = 10000) {
+  // Firebase 초기화 대기 및 직접 초기화 함수
+  async function waitForFirebase(maxWait = 30000) {
     const startTime = Date.now();
+    const checkInterval = 200;
     
     return new Promise((resolve, reject) => {
-      // 이미 초기화되어 있으면 바로 반환
-      if (window.firebaseModules && window.db && window.auth) {
+      console.log('⏳ Firebase 초기화 대기 중...');
+      
+      // 즉시 한 번 확인 (window.db/auth 또는 config.js의 export 확인)
+      const checkFirebase = () => {
+        // 방법 1: window 객체에 직접 할당된 경우
+        if (window.firebaseModules && window.db && window.auth) {
+          return { db: window.db, auth: window.auth, modules: window.firebaseModules };
+        }
+        
+        // 방법 2: config.js에서 import 시도
+        try {
+          // 동적 import는 여기서는 사용 불가, 대신 전역에서 확인
+          if (typeof auth !== 'undefined' && typeof db !== 'undefined' && window.firebaseModules) {
+            return { db: db, auth: auth, modules: window.firebaseModules };
+          }
+        } catch (e) {
+          // 무시
+        }
+        
+        return null;
+      };
+      
+      const firebase = checkFirebase();
+      if (firebase) {
+        console.log('✅ Firebase가 이미 초기화되어 있습니다!');
+        // window에 할당 (없는 경우)
+        if (!window.db) window.db = firebase.db;
+        if (!window.auth) window.auth = firebase.auth;
         resolve();
         return;
       }
 
-      console.log('⏳ Firebase 초기화 대기 중...');
-      
-      // Firebase 모듈 로드 이벤트 리스너
-      const onModulesLoaded = () => {
-        // 모듈이 로드되었지만 db와 auth가 아직 초기화되지 않았을 수 있음
-        const checkInterval = setInterval(() => {
-          if (window.db && window.auth) {
-            clearInterval(checkInterval);
-            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
-            console.log('✅ Firebase 초기화 완료!');
-            resolve();
-          } else if (Date.now() - startTime > maxWait) {
-            clearInterval(checkInterval);
-            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
-            reject(new Error('Firebase 초기화 시간 초과'));
+      // Firebase 직접 초기화 시도
+      const tryInitializeFirebase = () => {
+        if (!window.firebaseModules) return false;
+        
+        try {
+          const { initializeApp, getApp, getApps, getAuth, getFirestore } = window.firebaseModules;
+          
+          // Firebase 설정 확인
+          if (!window.ENV || !window.ENV.FIREBASE_API_KEY || window.ENV.FIREBASE_API_KEY === 'your_firebase_api_key') {
+            console.warn('⚠️ Firebase 설정이 없습니다.');
+            return false;
           }
-        }, 100);
+          
+          const firebaseConfig = {
+            apiKey: window.ENV.FIREBASE_API_KEY,
+            authDomain: window.ENV.FIREBASE_AUTH_DOMAIN,
+            projectId: window.ENV.FIREBASE_PROJECT_ID,
+            storageBucket: window.ENV.FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: window.ENV.FIREBASE_MESSAGING_SENDER_ID,
+            appId: window.ENV.FIREBASE_APP_ID
+          };
+          
+          let app;
+          try {
+            const apps = getApps ? getApps() : [];
+            if (apps.length > 0) {
+              app = apps[0];
+            } else {
+              app = initializeApp(firebaseConfig);
+            }
+          } catch (error) {
+            if (error.code === 'app/duplicate-app') {
+              app = getApp('[DEFAULT]');
+            } else {
+              throw error;
+            }
+          }
+          
+          const auth = getAuth(app);
+          const db = getFirestore(app);
+          
+          // window에 할당
+          window.auth = auth;
+          window.db = db;
+          
+          console.log('✅ Firebase 직접 초기화 완료!');
+          return true;
+        } catch (error) {
+          console.warn('⚠️ Firebase 직접 초기화 실패:', error.message);
+          return false;
+        }
+      };
+
+      // Firebase 모듈 로드 이벤트 리스너
+      let eventListenerAdded = false;
+      const onModulesLoaded = () => {
+        console.log('📦 Firebase 모듈 로드됨, 초기화 시도 중...');
+        if (tryInitializeFirebase()) {
+          clearInterval(checkIntervalId);
+          if (eventListenerAdded) {
+            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+          }
+          resolve();
+        }
       };
 
       // 이벤트 리스너 등록
-      window.addEventListener('firebaseModulesLoaded', onModulesLoaded);
+      if (!eventListenerAdded) {
+        window.addEventListener('firebaseModulesLoaded', onModulesLoaded);
+        eventListenerAdded = true;
+      }
 
-      // 이미 로드되어 있을 수 있으므로 즉시 확인
+      // 이미 모듈이 로드되어 있으면 즉시 시도
       if (window.firebaseModules) {
         onModulesLoaded();
       }
 
-      // 타임아웃 설정
-      setTimeout(() => {
-        window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
-        if (!window.db || !window.auth) {
-          reject(new Error('Firebase 초기화 시간 초과'));
+      // 주기적으로 확인
+      const checkIntervalId = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        
+        // Firebase 초기화 확인
+        const firebase = checkFirebase();
+        if (firebase) {
+          clearInterval(checkIntervalId);
+          if (eventListenerAdded) {
+            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+          }
+          if (!window.db) window.db = firebase.db;
+          if (!window.auth) window.auth = firebase.auth;
+          console.log('✅ Firebase 초기화 완료!');
+          resolve();
+          return;
         }
-      }, maxWait);
+
+        // 직접 초기화 시도
+        if (window.firebaseModules && tryInitializeFirebase()) {
+          clearInterval(checkIntervalId);
+          if (eventListenerAdded) {
+            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+          }
+          resolve();
+          return;
+        }
+
+        // 타임아웃 체크
+        if (elapsed >= maxWait) {
+          clearInterval(checkIntervalId);
+          if (eventListenerAdded) {
+            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+          }
+          
+          // 디버깅 정보 출력
+          console.error('❌ Firebase 초기화 상태:');
+          console.error('   firebaseModules:', !!window.firebaseModules);
+          console.error('   window.ENV:', !!window.ENV);
+          console.error('   FIREBASE_API_KEY:', !!window.ENV?.FIREBASE_API_KEY);
+          console.error('   db:', !!window.db);
+          console.error('   auth:', !!window.auth);
+          
+          reject(new Error('Firebase 초기화 시간 초과'));
+        } else {
+          // 진행 상황 표시 (5초마다)
+          if (elapsed % 5000 < checkInterval) {
+            console.log(`⏳ 대기 중... (${Math.floor(elapsed / 1000)}초 경과)`);
+          }
+        }
+      }, checkInterval);
     });
   }
 
   try {
-    // Firebase 초기화 대기
+    // Firebase 초기화 대기 (최대 30초)
     try {
-      await waitForFirebase(10000); // 최대 10초 대기
+      await waitForFirebase(30000);
     } catch (error) {
       console.error('❌ Firebase 초기화 실패:', error.message);
-      console.log('💡 페이지를 새로고침한 후 다시 시도해주세요.');
+      console.log('\n💡 해결 방법:');
+      console.log('   1. 페이지를 완전히 새로고침하세요 (Ctrl+F5 또는 Cmd+Shift+R)');
+      console.log('   2. 로그인 상태를 확인하세요');
+      console.log('   3. 브라우저 콘솔에 다른 오류가 있는지 확인하세요');
+      console.log('   4. 네트워크 연결을 확인하세요');
       return;
     }
 
-    // Firebase 모듈 확인
+    // 최종 확인
     if (!window.firebaseModules || !window.db || !window.auth) {
       console.error('❌ Firebase가 초기화되지 않았습니다.');
-      console.log('💡 페이지를 새로고침한 후 다시 시도해주세요.');
+      console.error('   firebaseModules:', !!window.firebaseModules);
+      console.error('   db:', !!window.db);
+      console.error('   auth:', !!window.auth);
+      console.log('\n💡 페이지를 새로고침한 후 다시 시도해주세요.');
       return;
     }
 
