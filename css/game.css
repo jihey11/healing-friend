@@ -1,0 +1,102 @@
+/* 게임 선택기 */
+.game-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* 게임 카드 */
+.game-card {
+  background: white;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.game-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.game-card h3 {
+  font-size: var(--font-size-xxl);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text);
+}
+
+.game-card p {
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-sm);
+}
+
+.game-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  font-weight: bold;
+  margin-bottom: var(--spacing-md);
+}
+
+/* 모달 오버레이 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 모달 */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.modal-content {
+  background: white;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+  pointer-events: all;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 32px;
+  background: none;
+  border: none;
+  color: var(--color-text-light);
+  cursor: pointer;
+  transition: var(--transition);
+  line-height: 1;
+  padding: 5px 10px;
+}
+
+.modal-close:hover {
+  color: var(--color-text);
+  transform: scale(1.1);
+}
+
+/* 게임 캔버스 */
+#game-container canvas {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+

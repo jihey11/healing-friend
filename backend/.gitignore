@@ -1,0 +1,17 @@
+# 환경 변수
+.env
+.env.local
+.env.production
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# 로그
+*.log
+
+# IDE
+.vscode/
+.idea/
+

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="아띠의 감정별 - 정신건강 케어를 위한 AI 캐릭터와 함께하는 일기, 대화, 게임 서비스">
+    <title>아띠의 감정별 - 정신건강 케어</title>
+    
+    <!-- Favicon 설정 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌟</text></svg>">
+    
+    <!-- CSS 파일들 -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/character.css">
+    <link rel="stylesheet" href="css/game.css">
+    
+    <!-- 환경변수 설정 (Netlify 빌드 시 주입됨) -->
+    <script>
+        // 로컬 개발용 기본값 (빌드 스크립트가 실행되지 않을 때 사용)
+        // Netlify 배포 시 build-netlify.js가 이 부분을 환경 변수로 교체합니다
+        window.ENV = {
+            // 백엔드 API URL (Railway 배포 URL)
+            API_URL: "http://localhost:3000",
+            
+            // Firebase 설정 (로컬 개발 시 사용)
+            // 채팅 기능을 사용하려면 아래 값들을 Firebase Console에서 가져와서 입력하세요
+            // 설정 방법: CHAT_FIREBASE_SETUP.md 파일 참고
+            // 
+            // 1. Firebase Console > 프로젝트 설정(⚙️) > 내 앱 > 웹 앱 설정에서 복사
+            // 2. 아래 값들을 실제 값으로 변경하세요
+            FIREBASE_API_KEY: "AIzaSyBo_9CNsDaPyNiJVFkpkuV6vBghC-oKJqw",
+            FIREBASE_AUTH_DOMAIN: "healing-friend.firebaseapp.com",
+            FIREBASE_PROJECT_ID: "healing-friend",  // 프로젝트 ID는 이미 확인됨
+            FIREBASE_STORAGE_BUCKET: "healing-friend.firebasestorage.app",
+            FIREBASE_MESSAGING_SENDER_ID: "903142131790",
+            FIREBASE_APP_ID: "1:903142131790:web:c2e414321180b92b6adb1f",
+            
+            // Firebase Realtime Database URL (채팅 기능에 필요)
+            // Firebase Console > Realtime Database에서 URL 확인 후 아래에 입력하세요
+            // 형식: https://프로젝트ID-default-rtdb.firebaseio.com/
+            FIREBASE_DATABASE_URL: "https://healing-friend-default-rtdb.firebaseio.com/"
+            
+            // 주의: OpenAI API 키는 절대 프론트엔드에 노출하지 마세요!
+            // 모든 AI API 호출은 위의 API_URL (백엔드 서버)를 통해 이루어집니다.
+        };
+        
+        // FIREBASE_DATABASE_URL이 없으면 즉시 자동 생성 (객체 정의 직후)
+        if (!window.ENV.FIREBASE_DATABASE_URL && window.ENV.FIREBASE_PROJECT_ID) {
+            window.ENV.FIREBASE_DATABASE_URL = `https://${window.ENV.FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com/`;
+        }
+        
+        // Firebase 설정 확인 (디버깅용)
+        console.log('Firebase 설정 확인:', {
+            hasApiKey: !!window.ENV.FIREBASE_API_KEY,
+            hasAuthDomain: !!window.ENV.FIREBASE_AUTH_DOMAIN,
+            hasProjectId: !!window.ENV.FIREBASE_PROJECT_ID,
+            hasStorageBucket: !!window.ENV.FIREBASE_STORAGE_BUCKET,
+            hasMessagingSenderId: !!window.ENV.FIREBASE_MESSAGING_SENDER_ID,
+            hasAppId: !!window.ENV.FIREBASE_APP_ID,
+            hasDatabaseURL: !!window.ENV.FIREBASE_DATABASE_URL,
+            databaseURL: window.ENV.FIREBASE_DATABASE_URL
+        });
+    </script>
+
+    <!-- Firebase SDK CDN (v9 modular) -->
+    <script type="module">
+        // Firebase 모듈들을 동적으로 로드 (재시도 로직 포함)
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 2000; // 2초
+        
+        async function loadFirebaseModules() {
+            try {
+                console.log(`Firebase 모듈 로드 시도 ${retryCount + 1}/${MAX_RETRIES + 1}`);
+                
+                // Firebase 모듈들을 순차적으로 로드
+                const appModule = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+                const authModule = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+                const firestoreModule = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                const databaseModule = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+                
+                // Firebase 함수들을 window 객체에 저장
+                window.firebaseModules = {
+                    initializeApp: appModule.initializeApp,
+                    getApp: appModule.getApp,
+                    getApps: appModule.getApps,
+                    getAuth: authModule.getAuth,
+                    getFirestore: firestoreModule.getFirestore,
+                    getDatabase: databaseModule.getDatabase,
+                    ref: databaseModule.ref,
+                    set: databaseModule.set,
+                    push: databaseModule.push,
+                    onValue: databaseModule.onValue,
+                    off: databaseModule.off,
+                    onDisconnect: databaseModule.onDisconnect,
+                    remove: databaseModule.remove,
+                    // Auth 함수들도 직접 저장
+                    createUserWithEmailAndPassword: authModule.createUserWithEmailAndPassword,
+                    signInWithEmailAndPassword: authModule.signInWithEmailAndPassword,
+                    signOut: authModule.signOut,
+                    onAuthStateChanged: authModule.onAuthStateChanged,
+                    setPersistence: authModule.setPersistence,
+                    browserLocalPersistence: authModule.browserLocalPersistence,
+                    browserSessionPersistence: authModule.browserSessionPersistence,
+                    // Firestore 함수들도 직접 저장
+                    doc: firestoreModule.doc,
+                    setDoc: firestoreModule.setDoc,
+                    getDoc: firestoreModule.getDoc,
+                    collection: firestoreModule.collection,
+                    addDoc: firestoreModule.addDoc,
+                    serverTimestamp: firestoreModule.serverTimestamp
+                };
+                
+                console.log('✅ Firebase 모듈 로드 완료');
+                retryCount = 0; // 성공 시 재시도 카운트 리셋
+                
+                // Firebase 초기화 이벤트 발생
+                window.dispatchEvent(new CustomEvent('firebaseModulesLoaded'));
+                
+            } catch (error) {
+                console.error(`❌ Firebase 모듈 로드 실패 (시도 ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
+                
+                // 재시도 로직
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`${RETRY_DELAY / 1000}초 후 재시도...`);
+                    setTimeout(() => {
+                        loadFirebaseModules();
+                    }, RETRY_DELAY);
+                } else {
+                    // 최대 재시도 횟수 초과
+                    console.error('Firebase 모듈 로드 최대 재시도 횟수 초과');
+                    window.firebaseModules = null;
+                    
+                    // Firebase 로드 실패 이벤트 발생
+                    window.dispatchEvent(new CustomEvent('firebaseModulesFailed', { detail: error }));
+                }
+            }
+        }
+        
+        // Firebase 모듈 로드 시작
+        loadFirebaseModules();
+    </script>
+</head>
+<body>
+    <!-- 로딩 화면 -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>로딩 중...</p>
+    </div>
+
+    <!-- 인증 화면 -->
+    <div id="auth-container" class="auth-container hidden">
+        <div class="auth-card">
+            <h1>🌟 아띠의 감정별</h1>
+            
+            <!-- 탭 -->
+            <div class="tab-buttons">
+                <button id="login-tab" class="tab-btn active">로그인</button>
+                <button id="signup-tab" class="tab-btn">회원가입</button>
+            </div>
+            
+            <!-- 로그인 폼 -->
+            <form id="login-form" class="auth-form">
+                <input type="email" id="login-email" placeholder="이메일" required>
+                <input type="password" id="login-password" placeholder="비밀번호" required>
+                <label>
+                    <input type="checkbox" id="remember-me">
+                    <span>자동 로그인</span>
+                </label>
+                <button type="submit">로그인</button>
+                <p class="error-msg" id="login-error"></p>
+            </form>
+            
+            <!-- 회원가입 폼 -->
+            <form id="signup-form" class="auth-form hidden">
+                <input type="email" id="signup-email" placeholder="이메일" required>
+                <input type="password" id="signup-password" placeholder="비밀번호 (6자 이상)" required minlength="6">
+                <input type="password" id="signup-confirm" placeholder="비밀번호 확인" required>
+                <input type="text" id="signup-nickname" placeholder="닉네임" required maxlength="10">
+                <input type="text" id="signup-character-name" placeholder="캐릭터 이름" required maxlength="10">
+                <button type="submit">회원가입</button>
+                <p class="error-msg" id="signup-error"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- 메인 앱 -->
+    <div id="app" class="app hidden">
+        <!-- 헤더 -->
+        <header class="header">
+            <div class="logo">🌟 아띠의 감정별</div>
+            <div class="header-info">
+                <span id="next-diary-time">일기 작성 가능</span>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="main-content">
+            <!-- 홈 화면 -->
+            <div id="home-view" class="view active">
+                <div class="home-layout">
+                    <!-- 왼쪽: 캐릭터 영역 -->
+                    <div class="home-left">
+                        <div class="character-container">
+                            <canvas id="character-canvas" width="400" height="400"></canvas>
+                            <div id="speech-bubble" class="speech-bubble hidden">
+                                <p id="speech-text"></p>
+                            </div>
+                        </div>
+                        <div class="character-info">
+                    <div class="level-bar">
+                        <span>Lv.<span id="character-level">1</span></span>
+                        <div class="exp-bar">
+                            <div id="exp-fill" class="exp-fill"></div>
+                        </div>
+                        <span id="exp-text">0/100</span>
+                    </div>
+                    <!-- 관리자 도구 (관리자만 표시) -->
+                    <div style="margin-top: 12px;">
+                        <div id="admin-evolve-group" class="hidden" style="display: grid; gap: 10px; grid-template-columns: 1fr; background: #fff; border: 1px solid var(--color-border); border-radius: 12px; padding: 12px;">
+                            <!-- 섹션: 자동 진화 -->
+                            <div style="display: grid; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13px; color: var(--color-text);">자동 진화</div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button id="admin-evolve-1" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">1단계 (최고 감정)</button>
+                                    <button id="admin-evolve-2" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">2단계 (최고 감정)</button>
+                                    <button id="admin-evolve-3" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">3단계 (최고 감정)</button>
+                                </div>
+                            </div>
+
+                            <!-- 섹션: 선택 감정 진화 -->
+                            <div style="display: grid; gap: 8px;">
+                                <div style="font-weight: 700; font-size: 13px; color: var(--color-text);">선택 감정 진화</div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                    <label for="admin-emotion-select" style="font-size: 12px; color: var(--color-text-light);">감정</label>
+                                    <select id="admin-emotion-select" style="padding: 8px 10px; border-radius: 10px; background: white; border: 1px solid var(--color-border);">
+                                        <option value="기쁨">기쁨</option>
+                                        <option value="슬픔">슬픔</option>
+                                        <option value="분노">분노</option>
+                                        <option value="두려움">두려움</option>
+                                        <option value="놀람">놀람</option>
+                                        <option value="혐오">혐오</option>
+                                    </select>
+                                    <button id="admin-evolve-1-custom" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">1단계</button>
+                                    <button id="admin-evolve-2-custom" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">2단계(표정)</button>
+                                    <button id="admin-evolve-3-custom" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">3단계</button>
+                                </div>
+                            </div>
+
+                            <!-- 섹션: 기본/초기화 -->
+                            <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; gap: 8px;">
+                                    <button id="admin-revert-base" class="btn-secondary" style="padding: 8px 12px; border-radius: 10px;">기본모습</button>
+                                </div>
+                                <button id="admin-reset-btn" class="btn-danger hidden" style="padding: 8px 14px; border-radius: 10px;">초기화 (관리자)</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 관리자 전용 감정 점수 표시 -->
+                    <div id="emotion-scores" class="emotion-scores hidden">
+                        <h3>감정 점수</h3>
+                        <div class="emotion-grid">
+                            <div class="emotion-item">
+                                <span class="emotion-emoji">😊</span>
+                                <span class="emotion-name">기쁨</span>
+                                <span class="emotion-value" id="emotion-joy">0</span>
+                            </div>
+                            <div class="emotion-item">
+                                <span class="emotion-emoji">😢</span>
+                                <span class="emotion-name">슬픔</span>
+                                <span class="emotion-value" id="emotion-sadness">0</span>
+                            </div>
+                            <div class="emotion-item">
+                                <span class="emotion-emoji">😡</span>
+                                <span class="emotion-name">분노</span>
+                                <span class="emotion-value" id="emotion-anger">0</span>
+                            </div>
+                            <div class="emotion-item">
+                                <span class="emotion-emoji">😰</span>
+                                <span class="emotion-name">두려움</span>
+                                <span class="emotion-value" id="emotion-fear">0</span>
+                            </div>
+                            <div class="emotion-item">
+                                <span class="emotion-emoji">😲</span>
+                                <span class="emotion-name">놀람</span>
+                                <span class="emotion-value" id="emotion-surprise">0</span>
+                            </div>
+                            <div class="emotion-item">
+                                <span class="emotion-emoji">😖</span>
+                                <span class="emotion-name">혐오</span>
+                                <span class="emotion-value" id="emotion-disgust">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 오늘의 팁 (홈 탭 전용) -->
+                    <div class="tip-banner">
+                        <span>💡</span>
+                        <p id="daily-tip"></p>
+                    </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 오른쪽: 채팅 영역 -->
+                    <div class="home-right">
+                        <div class="home-chat-container">
+                            <div class="home-chat-header">
+                                <h3>💬 친구와 대화하기</h3>
+                            </div>
+                            <div class="home-chat-messages" id="home-chat-messages">
+                                <div class="chat-message bot">
+                                    <div class="message-bubble">안녕! 오늘 기분은 어때? 😊</div>
+                                </div>
+                            </div>
+                            <div class="home-chat-input-container">
+                                <input type="text" id="home-chat-input" placeholder="메시지를 입력하세요..." maxlength="500">
+                                <button id="home-chat-send">전송</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 일기 화면 -->
+            <div id="diary-view" class="view">
+                <div class="diary-layout">
+                    <!-- 왼쪽: 일기 작성 -->
+                    <div class="diary-left">
+                        <div class="diary-container">
+                            <h2>오늘의 기분</h2>
+                            <div class="emotion-selector">
+                                <button class="emotion-btn" data-emotion="기쁨">😊</button>
+                                <button class="emotion-btn" data-emotion="슬픔">😢</button>
+                                <button class="emotion-btn" data-emotion="분노">😡</button>
+                                <button class="emotion-btn" data-emotion="두려움">😰</button>
+                                <button class="emotion-btn" data-emotion="놀람">😲</button>
+                                <button class="emotion-btn" data-emotion="혐오">😖</button>
+                            </div>
+                            <textarea id="diary-content" placeholder="오늘 하루는 어땠나요? (최소 10자)" maxlength="1000"></textarea>
+                            <div class="char-count"><span id="char-count">0</span></div>
+                            <div class="diary-actions">
+                                <button id="diary-cancel" class="btn-secondary">취소</button>
+                                <button id="diary-save" class="btn-primary" disabled>저장</button>
+                            </div>
+                            <p class="error-msg" id="diary-error"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- 오른쪽: 일기 목록 -->
+                    <div class="diary-right">
+                        <div class="diary-list-container">
+                            <div class="diary-list-header">
+                                <div class="diary-list-title-wrapper">
+                                    <button id="diary-list-toggle" class="toggle-btn" aria-label="일기 목록 접기/펼치기">
+                                        <span class="toggle-icon">▼</span>
+                                    </button>
+                                    <h3>📖 일기 목록</h3>
+                                </div>
+                                <button id="load-diary-btn" class="btn-secondary">새로고침</button>
+                            </div>
+                            <div id="diary-list" class="diary-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 게임 선택 화면 -->
+            <div id="game-view" class="view">
+                <div class="game-selector">
+                    <div class="game-card" id="target-game-card">
+                        <h3>🎯 과녁 맞추기</h3>
+                        <p>스트레스 해소</p>
+                        <p class="game-count">오늘 <span id="target-plays">0</span>/5 플레이</p>
+                        <button class="btn-primary">시작하기</button>
+                    </div>
+                    <div class="game-card" id="puzzle-game-card">
+                        <h3>🧩 슬라이딩 퍼즐</h3>
+                        <p>마음 챙김</p>
+                        <p class="game-count">오늘 <span id="puzzle-plays">0</span>/5 플레이</p>
+                        <button class="btn-primary">시작하기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 마이페이지 -->
+            <div id="mypage-view" class="view">
+                <div class="mypage-container">
+                    <section class="profile-section">
+                        <h2>프로필</h2>
+                        <p>닉네임: <span id="user-nickname"></span></p>
+                        <p>캐릭터: <span id="character-name"></span></p>
+                        <p>함께한 지 <span id="days-count">0</span>일</p>
+                    </section>
+                    
+                    <section class="stats-section">
+                        <h2>통계</h2>
+                        <p>레벨: <span id="stats-level">1</span></p>
+                        <p>진화 단계: <span id="stats-evolution">0</span></p>
+                        <p>총 일기: <span id="stats-diaries">0</span>개</p>
+                    </section>
+                    
+                    <section class="settings-section">
+                        <h2>설정</h2>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="notification-toggle">
+                                <span>알림 받기</span>
+                            </label>
+                        </div>
+                        <button id="logout-btn" class="btn-secondary" style="margin-top: 16px;">로그아웃</button>
+                    </section>
+                </div>
+            </div>
+            
+            <!-- 음식 화면 -->
+            <div id="food-view" class="view">
+                <div class="food-container">
+                    <div class="food-header">
+                        <h2>🍽️ 음식 인벤토리</h2>
+                        <p class="food-count">보유: <span id="total-food-count">0</span>개</p>
+                    </div>
+                    
+                    <div class="food-filter">
+                        <button class="filter-btn active" data-filter="all">전체</button>
+                        <button class="filter-btn" data-filter="기쁨">😊 기쁨</button>
+                        <button class="filter-btn" data-filter="슬픔">😢 슬픔</button>
+                        <button class="filter-btn" data-filter="분노">😡 분노</button>
+                        <button class="filter-btn" data-filter="두려움">😰 두려움</button>
+                        <button class="filter-btn" data-filter="놀람">😲 놀람</button>
+                        <button class="filter-btn" data-filter="혐오">😖 혐오</button>
+                    </div>
+                    
+                    <div id="food-grid" class="food-grid">
+                        <!-- 동적으로 음식 카드 생성 -->
+                    </div>
+                    
+                    <div id="food-empty" class="food-empty hidden">
+                        <p class="empty-icon">🍽️</p>
+                        <p class="empty-text">아직 음식이 없어요</p>
+                        <p class="empty-hint">게임을 플레이해서 음식을 얻어보세요!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 채팅 화면 -->
+            <div id="chat-view" class="view">
+                <!-- 닉네임 입력 (처음 접속 시) -->
+                <div id="chat-nickname-section" class="chat-nickname-section hidden">
+                    <div class="chat-nickname-card">
+                        <h2>채팅방 입장</h2>
+                        <input type="text" id="chat-nickname-input" placeholder="닉네임을 입력하세요" maxlength="20" />
+                        <input type="file" id="chat-profile-image-input" accept="image/*" />
+                        <button class="btn-primary" onclick="window.chatRoomManager?.saveNickname()">확인</button>
+                    </div>
+                </div>
+
+                <!-- 채팅방 목록 -->
+                <div id="chat-room-selection" class="chat-room-selection">
+                    <div class="chat-room-header">
+                        <h2>💬 채팅방 목록</h2>
+                        <button class="btn-primary" onclick="window.chatRoomManager?.showCreateRoomForm()">➕ 방 만들기</button>
+                    </div>
+                    <input type="text" id="chat-search-room" placeholder="채팅방 검색..." />
+                    <div id="chat-room-list-container" class="chat-room-list-container"></div>
+                </div>
+
+                <!-- 채팅방 생성 -->
+                <div id="chat-create-room-form" class="chat-create-room-form hidden">
+                    <div class="chat-create-room-card">
+                        <h2>✨ 새 채팅방 만들기</h2>
+                        <div class="form-group">
+                            <label for="chat-new-room-name">방 이름</label>
+                            <input type="text" id="chat-new-room-name" placeholder="방 이름을 입력하세요" maxlength="30" />
+                        </div>
+                        <div class="form-group">
+                            <label for="chat-new-room-image">방 이미지 (선택)</label>
+                            <input type="file" id="chat-new-room-image" accept="image/*" />
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="chat-use-password" />
+                                <span>비밀번호 설정</span>
+                            </label>
+                        </div>
+                        <div class="form-group password-group hidden" id="password-input-group">
+                            <label for="chat-new-room-password">비밀번호</label>
+                            <input type="password" id="chat-new-room-password" placeholder="비밀번호를 입력하세요" maxlength="20" />
+                        </div>
+                        <div class="chat-create-room-buttons">
+                            <button class="btn-primary" onclick="window.chatRoomManager?.createRoom()">방 만들기</button>
+                            <button class="btn-secondary" onclick="window.chatRoomManager?.cancelCreateRoom()">취소</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 채팅 화면 -->
+                <div id="chat-section" class="chat-layout hidden">
+                    <!-- 사이드바 -->
+                    <div class="chat-sidebar">
+                        <div class="sidebar-header">
+                            <div class="sidebar-title">채팅방 목록</div>
+                            <button class="btn-primary btn-small" onclick="window.chatRoomManager?.showCreateRoomForm()">➕</button>
+                        </div>
+                        <div class="sidebar-rooms" id="chat-sidebar-room-list"></div>
+                    </div>
+
+                    <!-- 메인 채팅 -->
+                    <div class="chat-main">
+                        <div class="chat-header">
+                            <div class="chat-header-info">
+                                <img id="chat-room-profile" class="chat-room-profile" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ddd'/%3E%3Ctext x='50' y='60' text-anchor='middle' font-size='40' fill='%23999'%3E👤%3C/text%3E%3C/svg%3E" alt="채팅방 프로필">
+                                <div class="chat-room-title" id="chat-room-title">채팅방</div>
+                            </div>
+                            <button class="back-button" onclick="window.chatRoomManager?.exitRoom()">&#x276E;</button>
+                        </div>
+
+                        <div id="chat-box" class="chat-box"></div>
+                        <div id="chat-typing-indicator" class="typing-indicator"></div>
+
+                        <!-- 채팅 입력창 -->
+                        <div class="chat-input-bar">
+                            <input type="file" id="chat-file-input" accept="image/*,video/*" style="display: none;" />
+                            <button class="chat-icon-btn" onclick="document.getElementById('chat-file-input').click()">📎</button>
+                            <input type="text" id="chat-message-input" placeholder="메시지를 입력하세요..." maxlength="1000" />
+                            <span class="char-counter" id="chat-char-counter">0/1000</span>
+                            <button class="send-btn" onclick="window.chatRoomManager?.sendMessage()">➤</button>
+                        </div>
+
+                        <button class="clear-button" onclick="window.chatRoomManager?.clearRoom()">🧹 채팅방 초기화</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 하단 네비게이션 -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-view="home">
+                <span>🏠</span>
+                <span>홈</span>
+            </button>
+            <button class="nav-btn" data-view="diary">
+                <span>📝</span>
+                <span>일기</span>
+            </button>
+            <button class="nav-btn" data-view="game">
+                <span>🎮</span>
+                <span>게임</span>
+            </button>
+            <button class="nav-btn" data-view="chat">
+                <span>💬</span>
+                <span>채팅</span>
+            </button>
+            <button class="nav-btn" data-view="food">
+                <span>🍽️</span>
+                <span>음식</span>
+            </button>
+            <button class="nav-btn" data-view="mypage">
+                <span>👤</span>
+                <span>마이</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 모달들 -->
+    <div id="modal-overlay" class="modal-overlay hidden"></div>
+    
+    <!-- 게임 모달 -->
+    <div id="game-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div id="game-container"></div>
+        </div>
+    </div>
+
+    <!-- 일기 상세 모달 -->
+    <div id="diary-detail-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div id="diary-detail-content"></div>
+        </div>
+    </div>
+
+    <!-- 알림 토스트 -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- JavaScript 파일들 (type="module"로 로드) -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/character.js"></script>
+    <script type="module" src="js/diary.js"></script>
+    <script type="module" src="js/chat.js"></script>
+    <script type="module" src="js/chat-room.js"></script>
+    <script type="module" src="js/tutorial.js"></script>
+    <script type="module" src="js/game-target.js"></script>
+    <script type="module" src="js/game-puzzle.js"></script>
+    <script type="module" src="js/food.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

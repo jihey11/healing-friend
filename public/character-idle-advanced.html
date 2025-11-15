@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고급 Idle Animation - 다양한 패턴</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .control-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .control-btn.active {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #333;
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .value {
+            color: #667eea;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 고급 Idle Animation</h1>
+        <canvas id="canvas" width="500" height="400"></canvas>
+        
+        <div class="controls">
+            <button class="control-btn active" data-pattern="bounce">통통 튀기</button>
+            <button class="control-btn" data-pattern="breathe">숨쉬기</button>
+            <button class="control-btn" data-pattern="sway">좌우 흔들기</button>
+            <button class="control-btn" data-pattern="excited">신나게</button>
+        </div>
+
+        <div class="info">
+            <div class="info-row">
+                <span class="label">현재 패턴:</span>
+                <span class="value" id="current-pattern">통통 튀기</span>
+            </div>
+            <div class="info-row">
+                <span class="label">프레임:</span>
+                <span class="value" id="current-frame">0 / 8</span>
+            </div>
+            <div class="info-row">
+                <span class="label">FPS:</span>
+                <span class="value">8</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 설정 ====================
+        const CONFIG = {
+            canvas: { width: 500, height: 400, centerX: 250, centerY: 200 },
+            animation: { targetFPS: 8, frameDuration: 125, totalFrames: 8 },
+            character: { baseRadius: 70, color: '#FFD700', strokeColor: '#FFA500' }
+        };
+
+        // ==================== Canvas 초기화 ====================
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // ==================== 애니메이션 상태 ====================
+        let lastFrameTime = 0;
+        let accumulatedTime = 0;
+        let currentFrame = 0;
+        let animationId = null;
+        let currentPattern = 'bounce';
+
+        // ==================== 애니메이션 패턴 정의 ====================
+        const ANIMATION_PATTERNS = {
+            // 패턴 1: 통통 튀기
+            bounce: [
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0, offsetY: 0,   rotation: 0 },
+                { scaleX: 0.95, scaleY: 1.05, offsetX: 0, offsetY: -3,  rotation: 0 },
+                { scaleX: 0.90, scaleY: 1.10, offsetX: 0, offsetY: -8,  rotation: 0 },
+                { scaleX: 0.95, scaleY: 1.05, offsetX: 0, offsetY: -10, rotation: 0 },
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0, offsetY: -8,  rotation: 0 },
+                { scaleX: 1.05, scaleY: 0.95, offsetX: 0, offsetY: -3,  rotation: 0 },
+                { scaleX: 1.08, scaleY: 0.92, offsetX: 0, offsetY: 0,   rotation: 0 },
+                { scaleX: 1.03, scaleY: 0.97, offsetX: 0, offsetY: 0,   rotation: 0 }
+            ],
+
+            // 패턴 2: 숨쉬기
+            breathe: [
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0, offsetY: 0,  rotation: 0 },
+                { scaleX: 1.02, scaleY: 1.02, offsetX: 0, offsetY: -1, rotation: 0 },
+                { scaleX: 1.04, scaleY: 1.04, offsetX: 0, offsetY: -2, rotation: 0 },
+                { scaleX: 1.05, scaleY: 1.05, offsetX: 0, offsetY: -2, rotation: 0 },
+                { scaleX: 1.04, scaleY: 1.04, offsetX: 0, offsetY: -2, rotation: 0 },
+                { scaleX: 1.02, scaleY: 1.02, offsetX: 0, offsetY: -1, rotation: 0 },
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0, offsetY: 0,  rotation: 0 },
+                { scaleX: 0.99, scaleY: 0.99, offsetX: 0, offsetY: 0,  rotation: 0 }
+            ],
+
+            // 패턴 3: 좌우 흔들기
+            sway: [
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0,  offsetY: 0, rotation: 0 },
+                { scaleX: 0.98, scaleY: 1.02, offsetX: 3,  offsetY: 0, rotation: 3 },
+                { scaleX: 0.96, scaleY: 1.04, offsetX: 6,  offsetY: 0, rotation: 5 },
+                { scaleX: 0.98, scaleY: 1.02, offsetX: 3,  offsetY: 0, rotation: 3 },
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0,  offsetY: 0, rotation: 0 },
+                { scaleX: 0.98, scaleY: 1.02, offsetX: -3, offsetY: 0, rotation: -3 },
+                { scaleX: 0.96, scaleY: 1.04, offsetX: -6, offsetY: 0, rotation: -5 },
+                { scaleX: 0.98, scaleY: 1.02, offsetX: -3, offsetY: 0, rotation: -3 }
+            ],
+
+            // 패턴 4: 신나게
+            excited: [
+                { scaleX: 1.00, scaleY: 1.00, offsetX: 0,  offsetY: 0,   rotation: 0 },
+                { scaleX: 0.95, scaleY: 1.10, offsetX: 2,  offsetY: -5,  rotation: 5 },
+                { scaleX: 0.90, scaleY: 1.15, offsetX: 0,  offsetY: -12, rotation: 0 },
+                { scaleX: 0.95, scaleY: 1.10, offsetX: -2, offsetY: -10, rotation: -5 },
+                { scaleX: 1.05, scaleY: 0.90, offsetX: 0,  offsetY: -5,  rotation: 0 },
+                { scaleX: 1.10, scaleY: 0.85, offsetX: 3,  offsetY: 0,   rotation: 8 },
+                { scaleX: 1.05, scaleY: 0.90, offsetX: 0,  offsetY: 2,   rotation: 0 },
+                { scaleX: 1.00, scaleY: 0.95, offsetX: -2, offsetY: 0,   rotation: -3 }
+            ]
+        };
+
+        // ==================== 캐릭터 그리기 ====================
+        function drawCharacter(frameIndex) {
+            const frame = ANIMATION_PATTERNS[currentPattern][frameIndex];
+            const cx = CONFIG.canvas.centerX + frame.offsetX;
+            const cy = CONFIG.canvas.centerY + frame.offsetY;
+
+            ctx.save();
+            
+            // 회전 적용
+            ctx.translate(cx, cy);
+            ctx.rotate(frame.rotation * Math.PI / 180);
+            ctx.translate(-cx, -cy);
+
+            // 몸체
+            const rx = CONFIG.character.baseRadius * frame.scaleX;
+            const ry = CONFIG.character.baseRadius * frame.scaleY;
+            const k = 0.552284749831;
+            const ox = rx * k;
+            const oy = ry * k;
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 8;
+
+            ctx.fillStyle = CONFIG.character.color;
+            ctx.strokeStyle = CONFIG.character.strokeColor;
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - ry);
+            ctx.bezierCurveTo(cx + ox, cy - ry, cx + rx, cy - oy, cx + rx, cy);
+            ctx.bezierCurveTo(cx + rx, cy + oy, cx + ox, cy + ry, cx, cy + ry);
+            ctx.bezierCurveTo(cx - ox, cy + ry, cx - rx, cy + oy, cx - rx, cy);
+            ctx.bezierCurveTo(cx - rx, cy - oy, cx - ox, cy - ry, cx, cy - ry);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            // 얼굴
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(cx - 22, cy - 10, 5, 0, Math.PI * 2);
+            ctx.arc(cx + 22, cy - 10, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(cx, cy + 15, 15, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 200, 220, 0.6)';
+            ctx.beginPath();
+            ctx.ellipse(cx - 40, cy + 10, 10, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx + 40, cy + 10, 10, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // ==================== 애니메이션 루프 ====================
+        function animate(currentTime) {
+            const deltaTime = currentTime - lastFrameTime;
+            accumulatedTime += deltaTime;
+
+            if (accumulatedTime >= CONFIG.animation.frameDuration) {
+                currentFrame = (currentFrame + 1) % CONFIG.animation.totalFrames;
+                accumulatedTime -= CONFIG.animation.frameDuration;
+                updateInfo();
+            }
+
+            ctx.clearRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
+            drawCharacter(currentFrame);
+
+            lastFrameTime = currentTime;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // ==================== UI 업데이트 ====================
+        function updateInfo() {
+            document.getElementById('current-frame').textContent = 
+                `${currentFrame} / ${CONFIG.animation.totalFrames}`;
+        }
+
+        // ==================== 패턴 변경 ====================
+        function changePattern(pattern) {
+            currentPattern = pattern;
+            currentFrame = 0;
+            accumulatedTime = 0;
+            
+            // 버튼 활성화 상태 변경
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.pattern === pattern) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 패턴 이름 표시
+            const patternNames = {
+                bounce: '통통 튀기',
+                breathe: '숨쉬기',
+                sway: '좌우 흔들기',
+                excited: '신나게'
+            };
+            document.getElementById('current-pattern').textContent = patternNames[pattern];
+        }
+
+        // ==================== 이벤트 리스너 ====================
+        document.querySelectorAll('.control-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                changePattern(btn.dataset.pattern);
+            });
+        });
+
+        // ==================== 시작 ====================
+        window.addEventListener('load', () => {
+            lastFrameTime = performance.now();
+            animationId = requestAnimationFrame(animate);
+            console.log('🎬 고급 애니메이션 시작!');
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (animationId) cancelAnimationFrame(animationId);
+        });
+
+    </script>
+</body>
+</html>
+
+

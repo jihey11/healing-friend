@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 사용자 데이터 - 본인만 읽기/쓰기 가능
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 일기 데이터 - 본인이 작성한 일기만 읽기/쓰기 가능
+    match /diaries/{diaryId} {
+      allow read: if request.auth != null && 
+                     (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if request.auth != null && 
+                      request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null && 
+                             resource.data.uid == request.auth.uid;
+    }
+    
+    // 게임 진행 상황 - 본인만 읽기/쓰기 가능
+    match /gameProgress/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 기본적으로 모든 접근 거부
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+
