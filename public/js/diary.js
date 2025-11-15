@@ -420,25 +420,33 @@ class DiaryManager {
 
       // Firebase 모드 - Firestore 사용
       // 인증 상태 확인
-      const { db, auth } = await import('./config.js');
-      const firebaseAuth = getFirebaseAuth();
-      const firebaseFirestore = getFirebaseFirestore();
+      if (!window.firebaseModules || !window.db || !window.auth) {
+        console.warn('⚠️ Firebase가 초기화되지 않았습니다. 로컬 스토리지로 저장합니다.');
+        return await this.saveToLocalStorage(content, selectedEmotion, emotionScores);
+      }
+
+      const firebaseModules = window.firebaseModules;
+      const db = window.db;
+      const auth = window.auth;
       
       // 인증된 사용자인지 확인
-      const isAuthenticated = firebaseAuth && auth && auth.currentUser && auth.currentUser.uid === this.uid;
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.uid !== this.uid) {
+        console.warn('⚠️ 인증되지 않은 사용자입니다. 로컬 스토리지로 저장합니다.');
+        return await this.saveToLocalStorage(content, selectedEmotion, emotionScores);
+      }
       
-      if (firebaseFirestore && db && window.firebaseModules && isAuthenticated) {
-        try {
-          const { doc, setDoc, getDoc, collection, addDoc, serverTimestamp } = window.firebaseModules;
+      try {
+        const { doc, setDoc, getDoc, collection, addDoc, serverTimestamp } = firebaseModules;
           
-          // 일기 저장
+        // 일기 저장
           const diaryData = {
             uid: this.uid,
             content,
             selectedEmotion,
             analysisResult: emotionScores,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+            createdAt: serverTimestamp ? serverTimestamp() : new Date(),
+            updatedAt: serverTimestamp ? serverTimestamp() : new Date()
           };
           
           // diaries 컬렉션에 새 문서 추가
@@ -449,7 +457,7 @@ class DiaryManager {
           // 마지막 일기 작성 시간을 users 문서에 저장
           const userRef = doc(db, 'users', this.uid);
           await setDoc(userRef, {
-            lastDiaryDate: serverTimestamp()
+            lastDiaryDate: serverTimestamp ? serverTimestamp() : new Date()
           }, { merge: true });
           
           // 캐릭터 감정 업데이트 (Firestore에 저장)
@@ -482,19 +490,18 @@ class DiaryManager {
           window.showToast('일기가 저장되었습니다! ✨');
           return { success: true, emotionScores, diaryId };
         } catch (firebaseError) {
-          // Firebase 권한 오류 시 로컬 스토리지로 폴백
-          if (firebaseError.code === 'permission-denied' || firebaseError.message?.includes('permissions')) {
-            console.warn('⚠️ Firebase 권한 오류, 로컬 스토리지로 폴백:', firebaseError);
-            // 데모 모드와 동일한 방식으로 로컬 스토리지에 저장
+          console.error('❌ Firebase 저장 오류:', firebaseError);
+          // Firebase 권한 오류 또는 기타 오류 시 로컬 스토리지로 폴백
+          if (firebaseError.code === 'permission-denied' || 
+              firebaseError.code === 'unavailable' ||
+              firebaseError.message?.includes('permissions') ||
+              firebaseError.message?.includes('network')) {
+            console.warn('⚠️ Firebase 오류, 로컬 스토리지로 폴백:', firebaseError.message);
             return await this.saveToLocalStorage(content, selectedEmotion, emotionScores);
           }
+          // 다른 오류는 다시 throw하여 상위에서 처리
           throw firebaseError;
         }
-      } else {
-        // Firebase가 초기화되지 않았거나 인증되지 않은 경우 로컬 스토리지 사용
-        console.warn('⚠️ Firebase 사용 불가, 로컬 스토리지로 저장');
-        return await this.saveToLocalStorage(content, selectedEmotion, emotionScores);
-      }
     } catch (error) {
       console.error('일기 저장 실패:', error);
       window.showToast('일기 저장에 실패했습니다.', 3000);
