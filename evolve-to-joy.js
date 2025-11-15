@@ -106,12 +106,18 @@
         }
       };
 
-      // Firebase 모듈 로드 이벤트 리스너
+      // checkIntervalId를 먼저 선언 (스코프 문제 해결)
+      let checkIntervalId = null;
       let eventListenerAdded = false;
+      
+      // Firebase 모듈 로드 이벤트 리스너
       const onModulesLoaded = () => {
         console.log('📦 Firebase 모듈 로드됨, 초기화 시도 중...');
         if (tryInitializeFirebase()) {
-          clearInterval(checkIntervalId);
+          if (checkIntervalId) {
+            clearInterval(checkIntervalId);
+            checkIntervalId = null;
+          }
           if (eventListenerAdded) {
             window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
           }
@@ -131,13 +137,16 @@
       }
 
       // 주기적으로 확인
-      const checkIntervalId = setInterval(() => {
+      checkIntervalId = setInterval(() => {
         const elapsed = Date.now() - startTime;
         
         // Firebase 초기화 확인
         const firebase = checkFirebase();
         if (firebase) {
-          clearInterval(checkIntervalId);
+          if (checkIntervalId) {
+            clearInterval(checkIntervalId);
+            checkIntervalId = null;
+          }
           if (eventListenerAdded) {
             window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
           }
@@ -150,7 +159,10 @@
 
         // 직접 초기화 시도
         if (window.firebaseModules && tryInitializeFirebase()) {
-          clearInterval(checkIntervalId);
+          if (checkIntervalId) {
+            clearInterval(checkIntervalId);
+            checkIntervalId = null;
+          }
           if (eventListenerAdded) {
             window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
           }
@@ -160,7 +172,10 @@
 
         // 타임아웃 체크
         if (elapsed >= maxWait) {
-          clearInterval(checkIntervalId);
+          if (checkIntervalId) {
+            clearInterval(checkIntervalId);
+            checkIntervalId = null;
+          }
           if (eventListenerAdded) {
             window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
           }
