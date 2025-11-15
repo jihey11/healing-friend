@@ -15,23 +15,72 @@
   const targetScore = 90; // 최종 진화를 위한 점수
   const targetEvolutionStage = 3; // 최종 진화 단계
 
+  // Firebase 초기화 대기 함수
+  async function waitForFirebase(maxWait = 10000) {
+    const startTime = Date.now();
+    
+    return new Promise((resolve, reject) => {
+      // 이미 초기화되어 있으면 바로 반환
+      if (window.firebaseModules && window.db && window.auth) {
+        resolve();
+        return;
+      }
+
+      console.log('⏳ Firebase 초기화 대기 중...');
+      
+      // Firebase 모듈 로드 이벤트 리스너
+      const onModulesLoaded = () => {
+        // 모듈이 로드되었지만 db와 auth가 아직 초기화되지 않았을 수 있음
+        const checkInterval = setInterval(() => {
+          if (window.db && window.auth) {
+            clearInterval(checkInterval);
+            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+            console.log('✅ Firebase 초기화 완료!');
+            resolve();
+          } else if (Date.now() - startTime > maxWait) {
+            clearInterval(checkInterval);
+            window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+            reject(new Error('Firebase 초기화 시간 초과'));
+          }
+        }, 100);
+      };
+
+      // 이벤트 리스너 등록
+      window.addEventListener('firebaseModulesLoaded', onModulesLoaded);
+
+      // 이미 로드되어 있을 수 있으므로 즉시 확인
+      if (window.firebaseModules) {
+        onModulesLoaded();
+      }
+
+      // 타임아웃 설정
+      setTimeout(() => {
+        window.removeEventListener('firebaseModulesLoaded', onModulesLoaded);
+        if (!window.db || !window.auth) {
+          reject(new Error('Firebase 초기화 시간 초과'));
+        }
+      }, maxWait);
+    });
+  }
+
   try {
-    // Firebase 모듈 확인
-    if (!window.firebaseModules) {
-      console.error('❌ Firebase 모듈이 로드되지 않았습니다.');
+    // Firebase 초기화 대기
+    try {
+      await waitForFirebase(10000); // 최대 10초 대기
+    } catch (error) {
+      console.error('❌ Firebase 초기화 실패:', error.message);
       console.log('💡 페이지를 새로고침한 후 다시 시도해주세요.');
       return;
     }
 
-    const { doc, getDoc, setDoc, updateDoc } = window.firebaseModules;
-    
-    // Firebase 초기화 확인
-    if (!window.db || !window.auth) {
+    // Firebase 모듈 확인
+    if (!window.firebaseModules || !window.db || !window.auth) {
       console.error('❌ Firebase가 초기화되지 않았습니다.');
       console.log('💡 페이지를 새로고침한 후 다시 시도해주세요.');
       return;
     }
 
+    const { doc, getDoc, setDoc, updateDoc } = window.firebaseModules;
     const auth = window.auth;
     const db = window.db;
 
